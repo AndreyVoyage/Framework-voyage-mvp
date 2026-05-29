@@ -1,0 +1,198 @@
+# Voyage AI Dev Framework v4.0
+
+> AI-Native Engineering Operating System для solo-разработчика.
+
+**Статус:** Phase 1 — Foundation (MVP runnable)  
+**Версия:** 4.0.0  
+**Python:** >= 3.11
+
+---
+
+## 🚀 Быстрый старт
+
+```bash
+# 1. Установка
+pip install -e .
+
+# 2. Инициализация проекта
+voyage init
+
+# 3. Генерация задачи
+voyage task developer --task "Implement user authentication" --phase M1
+
+# 4. Запуск агента
+voyage run developer --task "Implement auth" --plan "echo starting;echo done"
+
+# 5. Проверка статуса
+voyage status
+```
+
+---
+
+## 📁 Структура
+
+```
+voyage_framework/
+├── core/
+│   ├── models.py          # Pydantic: Event, AgentState, ToolResult, SecurityPolicy...
+│   ├── event_engine.py    # Event Store: SQLite + JSONL backup
+│   └── storage.py         # Atomic writes, frontmatter, journal rotation
+├── security/
+│   ├── sandbox.py         # SecureExecutor: 5 уровней защиты
+│   ├── policy.py          # RolePolicy + PolicyEnforcer
+│   ├── audit.py           # AuditLogger
+│   └── approval.py        # ApprovalQueue (human approval flow)
+├── specs/
+│   ├── task_generator.py  # Генератор TASK.md + CONTEXT.json
+│   └── tracker.py         # AcceptanceTracker
+├── agents/
+│   └── runtime.py         # AgentRuntime: Plan → Execute → Reflect → Retry
+├── cli.py                 # CLI: voyage init | run | task | status | events | approve
+└── __init__.py
+
+tests/
+├── unit/                  # 50+ unit tests
+└── integration/           # End-to-end workflow tests
+```
+
+---
+
+## 🏗 Архитектура
+
+### Core Components (Phase 1)
+
+| Компонент | Файл | Статус |
+|-----------|------|--------|
+| Event Store | `core/event_engine.py` | ✅ Работает |
+| Security Sandbox | `security/sandbox.py` | ✅ 5 уровней |
+| Task Generator | `specs/task_generator.py` | ✅ Генерирует TASK.md |
+| Agent Runtime | `agents/runtime.py` | ✅ Plan→Execute→Reflect→Retry |
+| Role Policies | `security/policy.py` | ✅ 6 ролей |
+| Audit Log | `security/audit.py` | ✅ JSONL |
+| Approval Flow | `security/approval.py` | ✅ .voyage_approval_pending.json |
+
+### Future Phases
+
+- **Phase 2:** Semantic Memory (ChromaDB), AST Manager, Tool Adapters
+- **Phase 3:** Self-Improving Engine, Golden Datasets, CI Pipeline
+- **Phase 4:** LangGraph Integration, Visualizer API
+
+---
+
+## 🛡 Безопасность
+
+### 5 уровней защиты SecureExecutor
+
+1. **L1 — Dangerous Patterns:** regex блокировка (`rm -rf /`, `eval()`, `curl | sh`)
+2. **L2 — Whitelist:** только разрешённые команды (`git`, `pytest`, `python`, ...)
+3. **L3 — Path Traversal:** запрет выхода за `project_root`
+4. **L4 — Network Guard:** блокировка сетевых операций (если `allow_network=False`)
+5. **L5 — Dangerous Tier:** `systemctl`, `ssh`, `rm` → требует human approval
+
+### Approval Flow
+
+```python
+# Dangerous команда блокируется
+result = await executor.execute(["systemctl", "restart", "nginx"])
+# result.blocked = True
+# result.approval_required = True
+
+# Создать запрос на approval
+req = executor.create_approval_request(["systemctl", "restart", "nginx"], agent_id="a1", role="devops")
+# Сохранить в .voyage_approval_pending.json
+```
+
+---
+
+## 🧪 Тесты
+
+```bash
+# Все тесты
+pytest
+
+# Только unit
+pytest -m unit
+
+# С coverage
+pytest --cov=voyage_framework --cov-report=html
+
+# Линтеры
+mypy voyage_framework
+ruff check voyage_framework
+ruff format voyage_framework
+```
+
+---
+
+## 📊 CLI
+
+```bash
+voyage init              # Инициализировать проект
+voyage status            # Статус (events count, last events)
+voyage run <role>        # Запустить агента
+  --task "..."           # Описание задачи
+  --plan "step1;step2"   # План выполнения
+  --project my-project   # ID проекта
+voyage task <role>       # Сгенерировать TASK.md + CONTEXT.json
+  --task "..."           # Обязательно
+  --phase M1             # Микро-фаза
+  --project my-project   # ID проекта
+voyage events            # Показать события
+  --limit 50             # Лимит
+  --project my-project   # Фильтр по проекту
+voyage approve           # Показать pending approval запросы
+```
+
+---
+
+## 📝 Пример TASK.md (генерируется автоматически)
+
+```markdown
+# TASK: Implement user authentication
+
+## Context
+**Project:** default
+**Events:** 0 total
+**Role:** developer
+**Phase:** Phase 1 | Micro-Phase: M1
+
+## Relevant Files
+- Определи самостоятельно
+
+## Acceptance Criteria
+- [ ] Код реализует: Implement user authentication
+- [ ] mypy проходит без ошибок
+- [ ] pytest проходит без ошибок
+- [ ] ruff check проходит без ошибок
+
+## Rules (from RULES.md)
+- Все async функции должны иметь type hints
+- Используй async_sessionmaker и AsyncSession для async SQLAlchemy
+- Не используй eval(), exec(), compile() с user input
+- Все секреты через pydantic-settings + .env файл
+- Каждая новая функция >10 строк обязана иметь >=1 тест
+
+## ADR References
+- [ADR-001](ADR/ADR-001.md)
+
+## Instructions
+1. Напиши код согласно критериям.
+2. Запусти mypy и pytest перед финализацией.
+3. Не меняй файлы вне указанных relevant_files.
+
+---
+Generated by Voyage Framework v4.0
+```
+
+---
+
+## 🔗 Связь с репозиторием документации
+
+Документация и архитектурные решения:
+- [Framework-voyage-v2](https://github.com/AndreyVoyage/Framework-voyage-v2) — ADR, ROLE, TECH, TEST_STRATEGY
+
+---
+
+## 📜 Лицензия
+
+MIT License — AndreyVoyage
