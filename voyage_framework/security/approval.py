@@ -97,7 +97,8 @@ class ApprovalQueue:
         """Удалить просроченные запросы. Возвращает количество удалённых."""
         now = datetime.now(UTC)
         expired = [
-            rid for rid, req in self._requests.items()
+            rid
+            for rid, req in self._requests.items()
             if req.status == ApprovalStatus.PENDING
             and (now - req.timestamp) > timedelta(hours=req.ttl_hours)
         ]

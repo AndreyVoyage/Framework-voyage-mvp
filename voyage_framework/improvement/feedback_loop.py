@@ -47,9 +47,7 @@ class FeedbackLoop:
 
         # Генерация правил при низкой оценке
         if evaluation.overall_score < 0.7:
-            failed_results = [
-                r for r in node_result.state.results if not r.success
-            ]
+            failed_results = [r for r in node_result.state.results if not r.success]
             for failed in failed_results:
                 rule = self.rule_engine.analyze_error(failed, project_id=project_id)
                 if rule:
@@ -72,6 +70,7 @@ class FeedbackLoop:
                 golden.reference_code,
             )
             from voyage_framework.core.models import SearchResult
+
             golden_match = SearchResult(
                 id=golden.id,
                 text=golden.reference_code,
@@ -83,39 +82,42 @@ class FeedbackLoop:
                 },
             )
             suggestions.append(
-                f"Golden match found: {golden.task_pattern} "
-                f"(similarity {similarity:.2f})"
+                f"Golden match found: {golden.task_pattern} (similarity {similarity:.2f})"
             )
-            self.engine.append(Event(
-                event_type=EventType.GOLDEN_MATCH_FOUND,
+            self.engine.append(
+                Event(
+                    event_type=EventType.GOLDEN_MATCH_FOUND,
+                    payload={
+                        "solution_id": golden.id,
+                        "task": node_result.state.task,
+                        "score": similarity,
+                        "project_id": project_id,
+                    },
+                    project_id=project_id,
+                    agent_id=node_result.state.agent_id,
+                )
+            )
+
+        # Логирование оценки
+        self.engine.append(
+            Event(
+                event_type=EventType.EVALUATION_COMPLETED,
                 payload={
-                    "solution_id": golden.id,
+                    "agent_id": node_result.state.agent_id,
                     "task": node_result.state.task,
-                    "score": similarity,
+                    "overall_score": evaluation.overall_score,
+                    "syntax_valid": evaluation.syntax_valid,
+                    "style_score": evaluation.style_score,
+                    "type_score": evaluation.type_score,
+                    "test_score": evaluation.test_score,
+                    "new_rules_count": len(new_rules),
                     "project_id": project_id,
                 },
                 project_id=project_id,
                 agent_id=node_result.state.agent_id,
-            ))
-
-        # Логирование оценки
-        self.engine.append(Event(
-            event_type=EventType.EVALUATION_COMPLETED,
-            payload={
-                "agent_id": node_result.state.agent_id,
-                "task": node_result.state.task,
-                "overall_score": evaluation.overall_score,
-                "syntax_valid": evaluation.syntax_valid,
-                "style_score": evaluation.style_score,
-                "type_score": evaluation.type_score,
-                "test_score": evaluation.test_score,
-                "new_rules_count": len(new_rules),
-                "project_id": project_id,
-            },
-            project_id=project_id,
-            agent_id=node_result.state.agent_id,
-            role=node_result.state.role,
-        ))
+                role=node_result.state.role,
+            )
+        )
 
         return FeedbackResult(
             evaluation=evaluation,

@@ -47,5 +47,6 @@ class AuditLogger:
     def get_log(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Получить последние записи audit log."""
         from voyage_framework.core.storage import load_jsonl
+
         entries = load_jsonl(self.log_path)
         return entries[-limit:]

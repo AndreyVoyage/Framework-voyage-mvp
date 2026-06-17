@@ -202,24 +202,28 @@ class SecureExecutor:
         result = await self.backend.execute(command, cwd=self.project_root)
 
         # Audit log
-        self._audit_log.append({
-            "command": command,
-            "level": level.value,
-            "success": result.success,
-            "blocked": result.blocked,
-            "timestamp": time.time(),
-        })
+        self._audit_log.append(
+            {
+                "command": command,
+                "level": level.value,
+                "success": result.success,
+                "blocked": result.blocked,
+                "timestamp": time.time(),
+            }
+        )
 
         return result
 
     def _block(self, command: list[str], reason: str) -> ToolResult:
         """Заблокировать команду с причиной."""
-        self._audit_log.append({
-            "command": command,
-            "blocked": True,
-            "reason": reason,
-            "timestamp": time.time(),
-        })
+        self._audit_log.append(
+            {
+                "command": command,
+                "blocked": True,
+                "reason": reason,
+                "timestamp": time.time(),
+            }
+        )
         return ToolResult(
             success=False,
             blocked=True,
@@ -243,4 +247,3 @@ class SecureExecutor:
             agent_id=agent_id,
             role=role,
         )
-

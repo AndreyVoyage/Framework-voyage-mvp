@@ -78,10 +78,7 @@ class Evaluator:
         test_score = 1.0  # Для standalone snippet pytest не применим
 
         overall = (
-            0.2 * float(syntax_valid)
-            + 0.3 * style_score
-            + 0.3 * type_score
-            + 0.2 * test_score
+            0.2 * float(syntax_valid) + 0.3 * style_score + 0.3 * type_score + 0.2 * test_score
         )
 
         return EvaluationResult(
@@ -135,7 +132,12 @@ class Evaluator:
 
     async def _run_mypy(self, path: Path) -> float:
         """Запустить mypy и вернуть score 0-1."""
-        result = await self.executor.execute([
-            self.mypy_cmd, "--ignore-missing-imports", "--no-error-summary", str(path),
-        ])
+        result = await self.executor.execute(
+            [
+                self.mypy_cmd,
+                "--ignore-missing-imports",
+                "--no-error-summary",
+                str(path),
+            ]
+        )
         return 1.0 if result.success else 0.0

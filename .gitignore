@@ -29,6 +29,7 @@ env/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 
@@ -38,6 +39,8 @@ htmlcov/
 .voyage_eval_*.py
 TASK.md
 CONTEXT.json
+coverage.svg
+coverage.json
 
 # IDE
 .vscode/

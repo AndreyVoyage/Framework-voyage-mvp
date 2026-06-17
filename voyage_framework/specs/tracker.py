@@ -53,11 +53,13 @@ class AcceptanceTracker:
                 failed += 1
                 status = "FAIL"
 
-            details.append({
-                "criterion": criterion,
-                "status": status,
-                "result": result,
-            })
+            details.append(
+                {
+                    "criterion": criterion,
+                    "status": status,
+                    "result": result,
+                }
+            )
 
         all_passed = failed == 0
 
@@ -71,12 +73,14 @@ class AcceptanceTracker:
         }
 
         # Логировать
-        self.engine.append(Event(
-            event_type=EventType.TASK_COMPLETED if all_passed else EventType.ERROR_LOGGED,
-            payload=summary,
-            project_id=project_id,
-            correlation_id=correlation_id,
-        ))
+        self.engine.append(
+            Event(
+                event_type=EventType.TASK_COMPLETED if all_passed else EventType.ERROR_LOGGED,
+                payload=summary,
+                project_id=project_id,
+                correlation_id=correlation_id,
+            )
+        )
 
         return summary
 
@@ -87,7 +91,4 @@ class AcceptanceTracker:
             event_type=EventType.TASK_COMPLETED,
             limit=100,
         )
-        return [
-            ev.payload for ev in events
-            if ev.payload.get("task_id") == task_id
-        ]
+        return [ev.payload for ev in events if ev.payload.get("task_id") == task_id]

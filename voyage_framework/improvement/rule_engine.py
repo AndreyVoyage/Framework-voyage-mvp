@@ -88,17 +88,19 @@ class RuleEngine:
         self._save()
 
         if self.engine:
-            self.engine.append(Event(
-                event_type=EventType.RULE_SUGGESTED,
-                payload={
-                    "rule_id": rule.rule_id,
-                    "pattern": rule.pattern,
-                    "category": rule.category,
-                    "severity": rule.severity,
-                    "project_id": project_id,
-                },
-                project_id=project_id,
-            ))
+            self.engine.append(
+                Event(
+                    event_type=EventType.RULE_SUGGESTED,
+                    payload={
+                        "rule_id": rule.rule_id,
+                        "pattern": rule.pattern,
+                        "category": rule.category,
+                        "severity": rule.severity,
+                        "project_id": project_id,
+                    },
+                    project_id=project_id,
+                )
+            )
 
         return rule
 
@@ -144,7 +146,8 @@ class RuleEngine:
         rules = list(self._rules.values())
         if project_id:
             rules = [
-                r for r in rules
+                r
+                for r in rules
                 if not r.source_event_id or r.source_event_id.startswith(project_id)
             ]
         return rules

@@ -1,5 +1,10 @@
 # Voyage AI Dev Framework v4.0
 
+[![CI](https://github.com/AndreyVoyage/Framework-voyage-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/AndreyVoyage/Framework-voyage-mvp/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/AndreyVoyage/Framework-voyage-mvp/main/coverage.json)](https://github.com/AndreyVoyage/Framework-voyage-mvp)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/AndreyVoyage/Framework-voyage-mvp/blob/main/LICENSE)
+
 > AI-Native Engineering Operating System для solo-разработчика.
 
 **Статус:** Phase 1 — Foundation (MVP runnable)  

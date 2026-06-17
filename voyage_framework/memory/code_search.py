@@ -50,11 +50,13 @@ class CodeSearch:
         if not self.engine:
             return
 
-        self.engine.append(Event(
-            event_type=EventType.MEMORY_QUERIED,
-            payload={
-                "collection": self.store.collection_name,
-                "question": question,
-                "result_count": result_count,
-            },
-        ))
+        self.engine.append(
+            Event(
+                event_type=EventType.MEMORY_QUERIED,
+                payload={
+                    "collection": self.store.collection_name,
+                    "question": question,
+                    "result_count": result_count,
+                },
+            )
+        )

@@ -77,14 +77,16 @@ class GoldenDataset:
                 best_match = solution
 
         if best_match and self.engine:
-            self.engine.append(Event(
-                event_type=EventType.GOLDEN_MATCH_FOUND,
-                payload={
-                    "solution_id": best_match.id,
-                    "task": task,
-                    "score": best_score,
-                },
-            ))
+            self.engine.append(
+                Event(
+                    event_type=EventType.GOLDEN_MATCH_FOUND,
+                    payload={
+                        "solution_id": best_match.id,
+                        "task": task,
+                        "score": best_score,
+                    },
+                )
+            )
 
         return best_match
 

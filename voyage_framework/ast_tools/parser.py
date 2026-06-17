@@ -9,10 +9,7 @@ try:
     import tree_sitter_typescript as tsts
     from tree_sitter import Language, Parser, Tree
 except ImportError as exc:
-    raise ImportError(
-        "tree-sitter extras not installed. "
-        "Run: pip install -e \".[ast,dev]\""
-    ) from exc
+    raise ImportError('tree-sitter extras not installed. Run: pip install -e ".[ast,dev]"') from exc
 
 
 SUPPORTED_LANGUAGES = {"python", "typescript"}
@@ -32,9 +29,7 @@ class ASTParser:
 
     def __init__(self, language: str = "python") -> None:
         if language not in SUPPORTED_LANGUAGES:
-            raise ValueError(
-                f"Unsupported language: {language}. Use one of {SUPPORTED_LANGUAGES}"
-            )
+            raise ValueError(f"Unsupported language: {language}. Use one of {SUPPORTED_LANGUAGES}")
         self.language = language
         self._parser = Parser(_get_language(language))
 
@@ -57,7 +52,7 @@ class ASTParser:
         suffix = Path(path).suffix.lower()
         if suffix in {".py"}:
             return "python"
-        if suffix in {".ts",".tsx"}:
+        if suffix in {".ts", ".tsx"}:
             return "typescript"
         raise ValueError(f"Cannot detect language for: {path}")
 

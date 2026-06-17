@@ -150,25 +150,58 @@ class SecurityPolicy(BaseModel):
     """
 
     project_root: Path = Field(default=Path("."))
-    allowed_commands: set[str] = Field(default_factory=lambda: {
-        "git", "pytest", "mypy", "ruff", "python", "pip", "docker", "cat", "grep", "find",
-        "ls", "pwd", "echo", "df", "ps", "mkdir", "touch",
-    })
-    dangerous_commands: set[str] = Field(default_factory=lambda: {
-        "systemctl", "ssh", "curl", "wget", "rm", "sudo", "chmod", "chown",
-        "eval", "exec", "compile", "nc", "nmap", "telnet",
-    })
-    dangerous_patterns: list[str] = Field(default_factory=lambda: [
-        r"rm\s+-rf\s+/",
-        r"eval\s*\(",
-        r"exec\s*\(",
-        r"sudo\s+",
-        r"curl\s+.*\|.*sh",
-        r"wget\s+.*\|.*sh",
-        r">\s*/dev/(null|zero|random)",
-        r"mkfs\.",
-        r"dd\s+if=",
-    ])
+    allowed_commands: set[str] = Field(
+        default_factory=lambda: {
+            "git",
+            "pytest",
+            "mypy",
+            "ruff",
+            "python",
+            "pip",
+            "docker",
+            "cat",
+            "grep",
+            "find",
+            "ls",
+            "pwd",
+            "echo",
+            "df",
+            "ps",
+            "mkdir",
+            "touch",
+        }
+    )
+    dangerous_commands: set[str] = Field(
+        default_factory=lambda: {
+            "systemctl",
+            "ssh",
+            "curl",
+            "wget",
+            "rm",
+            "sudo",
+            "chmod",
+            "chown",
+            "eval",
+            "exec",
+            "compile",
+            "nc",
+            "nmap",
+            "telnet",
+        }
+    )
+    dangerous_patterns: list[str] = Field(
+        default_factory=lambda: [
+            r"rm\s+-rf\s+/",
+            r"eval\s*\(",
+            r"exec\s*\(",
+            r"sudo\s+",
+            r"curl\s+.*\|.*sh",
+            r"wget\s+.*\|.*sh",
+            r">\s*/dev/(null|zero|random)",
+            r"mkfs\.",
+            r"dd\s+if=",
+        ]
+    )
     allow_network: bool = False
     max_command_length: int = 4096
 
@@ -305,4 +338,5 @@ class RuleSuggestion(BaseModel):
     def hash(self) -> str:
         """SHA256 хеш для deduplication."""
         import hashlib
+
         return hashlib.sha256(f"{self.pattern}:{self.rule_text}".encode()).hexdigest()[:16]

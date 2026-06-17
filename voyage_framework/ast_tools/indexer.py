@@ -36,7 +36,10 @@ class CodeIndexer:
         self.engine = engine
         self.include_extensions = include_extensions or {".py", ".ts", ".tsx"}
         self.exclude_patterns = exclude_patterns or {
-            "*/.venv/*", "*/__pycache__/*", "*/node_modules/*", "*/.git/*",
+            "*/.venv/*",
+            "*/__pycache__/*",
+            "*/node_modules/*",
+            "*/.git/*",
         }
 
     def index_project(
@@ -91,18 +94,20 @@ class CodeIndexer:
                     f"{project_id}:{path.as_posix()}:{symbol.kind}:"
                     f"{symbol.name}:{symbol.start_line}"
                 )
-                entries.append(MemoryEntry(
-                    id=entry_id,
-                    text=symbol.source,
-                    metadata={
-                        "project_id": project_id,
-                        "file": path.as_posix(),
-                        "kind": symbol.kind,
-                        "name": symbol.name,
-                        "start_line": symbol.start_line,
-                        "end_line": symbol.end_line,
-                    },
-                ))
+                entries.append(
+                    MemoryEntry(
+                        id=entry_id,
+                        text=symbol.source,
+                        metadata={
+                            "project_id": project_id,
+                            "file": path.as_posix(),
+                            "kind": symbol.kind,
+                            "name": symbol.name,
+                            "start_line": symbol.start_line,
+                            "end_line": symbol.end_line,
+                        },
+                    )
+                )
 
         return self.store.add_documents(entries)
 
@@ -124,13 +129,15 @@ class CodeIndexer:
         if not self.engine:
             return
 
-        self.engine.append(Event(
-            event_type=EventType.AST_INDEXED,
-            payload={
-                "project_id": project_id,
-                "collection": self.store.collection_name,
-                "files": files,
-                "symbols": symbols,
-            },
-            project_id=project_id,
-        ))
+        self.engine.append(
+            Event(
+                event_type=EventType.AST_INDEXED,
+                payload={
+                    "project_id": project_id,
+                    "collection": self.store.collection_name,
+                    "files": files,
+                    "symbols": symbols,
+                },
+                project_id=project_id,
+            )
+        )

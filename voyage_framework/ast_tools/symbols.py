@@ -74,14 +74,16 @@ class SymbolExtractor:
                 name = name_node.text.decode("utf-8")
 
             source = node.text.decode("utf-8") if node.text else ""
-            symbols.append(Symbol(
-                name=name or source.split()[0][:40],
-                kind=kind,
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1,
-                file=str(file),
-                source=source,
-            ))
+            symbols.append(
+                Symbol(
+                    name=name or source.split()[0][:40],
+                    kind=kind,
+                    start_line=node.start_point[0] + 1,
+                    end_line=node.end_point[0] + 1,
+                    file=str(file),
+                    source=source,
+                )
+            )
 
         return symbols
 

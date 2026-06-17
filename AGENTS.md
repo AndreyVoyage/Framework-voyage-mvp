@@ -344,24 +344,28 @@ from voyage_framework.core.models import EventEngine, Event, EventType, TaskSpec
 
 ### GitHub Actions
 
-Файл: `voyage_framework_v4_mvp/.github/workflows/ci.yml`
+Файлы:
 
-Триггеры:
+- `.github/workflows/ci.yml` — основной CI для корневого репозитория.
+- `.github/workflows/release.yml` — релиз по git tag `v*`.
+
+Триггеры CI:
 
 - `push` в `main` или `develop`;
 - `pull_request` в `main`.
 
-Matrix: Python 3.11 и 3.12 на `ubuntu-latest`.
+Matrix: Python 3.11 и 3.12 на `ubuntu-latest` и `windows-latest`.
 
-Шаги:
+Шаги CI:
 
 1. `pip install -e ".[dev]"`
 2. `ruff check voyage_framework`
 3. `mypy voyage_framework`
-4. `pytest --cov=voyage_framework --cov-report=xml`
-5. Загрузка coverage в Codecov.
+4. `pytest tests/ --cov=voyage_framework --cov-report=xml --cov-report=html`
+5. Генерация `coverage.svg` и `coverage.json` через `coverage-badge`.
+6. Автоматический commit badge-файлов в `main` при изменении.
 
-> Поскольку workflow находится внутри `voyage_framework_v4_mvp/`, он не сработает для корневого репозитория GitHub Actions по умолчанию.
+Release pipeline собирает `dist/*`, публикует GitHub Release и (после настройки `PYPI_API_TOKEN`) может публиковать пакет в PyPI.
 
 ---
 

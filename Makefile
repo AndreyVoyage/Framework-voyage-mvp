@@ -1,5 +1,5 @@
 # Voyage Framework — Makefile
-.PHONY: install test lint format clean docs
+.PHONY: install test test-cov lint format fix clean docs run-dev badge ci-test ci-lint ci-coverage release
 
 install:
 	pip install -e ".[dev]"
@@ -30,3 +30,21 @@ docs:
 
 run-dev:
 	voyage status
+
+badge:
+	coverage-badge -o coverage.svg -f
+
+ci-test:
+	pytest tests/ -q --tb=short
+
+ci-lint:
+	ruff check voyage_framework
+	mypy voyage_framework
+
+ci-coverage:
+	pytest --cov=voyage_framework --cov-report=xml --cov-report=html
+	coverage-badge -o coverage.svg -f
+
+release:
+	python -m build
+	twine upload dist/*

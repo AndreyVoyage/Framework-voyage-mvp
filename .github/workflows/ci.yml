@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run ruff linter
+        run: ruff check voyage_framework
+
+      - name: Run mypy type checker
+        run: mypy voyage_framework
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ --cov=voyage_framework \
+            --cov-report=xml --cov-report=html --cov-report=term
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: htmlcov-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: htmlcov/
+          if-no-files-found: ignore
+
+      - name: Upload XML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: ignore
+
+      - name: Job summary
+        shell: bash
+        run: |
+          tests_summary=$(pytest tests/ -q --tb=no | tail -n 1)
+          {
+            echo "## Voyage Framework CI Results"
+            echo "- OS: ${{ matrix.os }}"
+            echo "- Python: ${{ matrix.python-version }}"
+            echo "- ${tests_summary}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  badge:
+    name: Update coverage badge
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests with coverage
+        run: pytest tests/ --cov=voyage_framework --cov-report=term
+
+      - name: Generate coverage badge
+        run: coverage-badge -o coverage.svg -f
+
+      - name: Generate coverage JSON for shields.io
+        shell: bash
+        run: |
+          coverage json -o coverage.json
+          python - <<'PY'
+          import json
+
+          with open("coverage.json") as f:
+              data = json.load(f)
+
+          pct = round(data["totals"]["percent_covered"], 1)
+          color = "green" if pct >= 80 else "yellow" if pct >= 60 else "red"
+          badge = {
+              "schemaVersion": 1,
+              "label": "coverage",
+              "message": f"{pct}%",
+              "color": color,
+          }
+          with open("coverage.json", "w") as f:
+              json.dump(badge, f)
+          PY
+
+      - name: Upload badge artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: |
+            coverage.svg
+            coverage.json
+
+      - name: Commit coverage badge
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update coverage badge"
+          file_pattern: coverage.svg coverage.json

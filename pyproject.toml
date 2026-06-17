@@ -38,6 +38,9 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.4",
     "pre-commit>=3.7",
+    "coverage-badge>=1.1",
+    "build>=1.0",
+    "twine>=5.0",
 ]
 semantic = [
     "chromadb>=0.5",
@@ -58,7 +61,8 @@ voyage = "voyage_framework.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["voyage_framework*"]
+include = ["voyage_framework", "voyage_framework.*"]
+exclude = ["voyage_framework_v4_mvp", "voyage_framework_v4_mvp.*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

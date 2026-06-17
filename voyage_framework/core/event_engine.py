@@ -191,12 +191,14 @@ class EventEngine:
 
             # Последние 10 событий
             if len(context["latest_events"]) < 10:
-                context["latest_events"].append({
-                    "event_id": ev.event_id,
-                    "type": et,
-                    "timestamp": ev.timestamp.isoformat(),
-                    "payload_keys": list(ev.payload.keys()),
-                })
+                context["latest_events"].append(
+                    {
+                        "event_id": ev.event_id,
+                        "type": et,
+                        "timestamp": ev.timestamp.isoformat(),
+                        "payload_keys": list(ev.payload.keys()),
+                    }
+                )
 
             # Ошибки
             if ev.event_type == EventType.ERROR_LOGGED:
