@@ -1,9 +1,9 @@
 """Security компоненты Voyage Framework — щит системы."""
 
-from .sandbox import SecureExecutor, SandboxBackend, DockerBackend, SubprocessBackend
-from .policy import RolePolicy, PolicyEnforcer
+from .approval import ApprovalManager, ApprovalQueue
 from .audit import AuditLogger
-from .approval import ApprovalQueue, ApprovalManager
+from .policy import PolicyEnforcer, RolePolicy
+from .sandbox import DockerBackend, SandboxBackend, SecureExecutor, SubprocessBackend
 
 __all__ = [
     "SecureExecutor", "SandboxBackend", "DockerBackend", "SubprocessBackend",

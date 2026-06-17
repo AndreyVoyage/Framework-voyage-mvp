@@ -12,13 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import re
-import subprocess
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
-from voyage_framework.core.models import SecurityPolicy, SecurityLevel, ToolResult, ApprovalRequest
+from voyage_framework.core.models import ApprovalRequest, SecurityLevel, SecurityPolicy, ToolResult
 
 
 class SandboxBackend(ABC):
@@ -53,7 +52,7 @@ class SubprocessBackend(SandboxBackend):
                 exit_code=proc.returncode or 0,
                 execution_time_ms=round(elapsed, 2),
             )
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             return ToolResult(
                 success=False,
                 stderr=f"Command not found: {command[0]}",
@@ -97,9 +96,9 @@ class SecureExecutor:
         self.policy = policy
         self.project_root = Path(project_root).resolve()
         self.backend = backend or SubprocessBackend()
-        self._audit_log: list[dict] = []
+        self._audit_log: list[dict[str, Any]] = []
 
-    def _check_dangerous_patterns(self, command: list[str]) -> tuple[bool, Optional[str]]:
+    def _check_dangerous_patterns(self, command: list[str]) -> tuple[bool, str | None]:
         """L1: Проверка опасных паттернов через regex."""
         cmd_str = " ".join(command)
         for pattern in self.policy.dangerous_patterns:
@@ -107,7 +106,7 @@ class SecureExecutor:
                 return True, f"Dangerous pattern matched: {pattern}"
         return False, None
 
-    def _check_whitelist(self, command: list[str]) -> tuple[bool, Optional[str]]:
+    def _check_whitelist(self, command: list[str]) -> tuple[bool, str | None]:
         """L2: Проверка whitelist."""
         if not command:
             return True, "Empty command"
@@ -116,21 +115,22 @@ class SecureExecutor:
             return True, f"Command '{base}' not in allowed or dangerous list"
         return False, None
 
-    def _check_path_traversal(self, command: list[str]) -> tuple[bool, Optional[str]]:
+    def _check_path_traversal(self, command: list[str]) -> tuple[bool, str | None]:
         """L3: Проверка path traversal."""
         for arg in command[1:]:
             if arg.startswith("-"):
                 continue
-            path = Path(arg).resolve()
+            if arg.startswith("http") or arg.startswith("https"):
+                continue
+            # Разрешать относительные пути от project_root
+            path = (self.project_root / arg).resolve()
             try:
                 path.relative_to(self.project_root)
             except ValueError:
-                # Путь выходит за project_root
-                if not arg.startswith("http") and not arg.startswith("-"):
-                    return True, f"Path traversal: {arg} outside {self.project_root}"
+                return True, f"Path traversal: {arg} outside {self.project_root}"
         return False, None
 
-    def _check_network(self, command: list[str]) -> tuple[bool, Optional[str]]:
+    def _check_network(self, command: list[str]) -> tuple[bool, str | None]:
         """L4: Проверка сетевых операций."""
         if self.policy.allow_network:
             return False, None
@@ -152,12 +152,12 @@ class SecureExecutor:
         if blocked:
             return SecurityLevel.DANGEROUS
 
-        if base in self.policy.dangerous_commands:
-            return SecurityLevel.DANGEROUS
-
-        # Caution tier: rm, mv (не recursive, не root)
+        # Caution tier: rm, mv, cp без опасных паттернов
         if base in {"rm", "mv", "cp"}:
             return SecurityLevel.CAUTION
+
+        if base in self.policy.dangerous_commands:
+            return SecurityLevel.DANGEROUS
 
         return SecurityLevel.SAFE
 
@@ -231,7 +231,7 @@ class SecureExecutor:
             stderr=f"BLOCKED: {reason}",
         )
 
-    def get_audit_log(self) -> list[dict]:
+    def get_audit_log(self) -> list[dict[str, Any]]:
         """Получить audit trail."""
         return self._audit_log.copy()
 

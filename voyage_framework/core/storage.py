@@ -5,14 +5,14 @@ Atomic writes, frontmatter parsing, journal rotation.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
 
@@ -30,10 +30,8 @@ def atomic_write(path: Path, content: str) -> None:
             f.write(content)
         os.replace(temp_path, path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(temp_path)
-        except OSError:
-            pass
         raise
 
 
@@ -51,7 +49,7 @@ def append_entry(path: Path, content: str, frontmatter: dict[str, Any] | None = 
     path.parent.mkdir(parents=True, exist_ok=True)
 
     fm = frontmatter or {}
-    fm.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    fm.setdefault("timestamp", datetime.now(UTC).isoformat())
 
     fm_lines = "\n".join(f"{k}: {v}" for k, v in fm.items())
     entry = f"---\n{fm_lines}\n---\n{content}\n\n"
@@ -70,12 +68,12 @@ def parse_frontmatter_entries(path: Path) -> list[dict[str, Any]]:
         return []
 
     entries = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         text = f.read()
 
     parts = text.split("\n---\n")
     for i in range(0, len(parts) - 1, 2):
-        fm_text = parts[i].lstrip("---\n")
+        fm_text = parts[i].removeprefix("---\n")
         content = parts[i + 1].strip() if i + 1 < len(parts) else ""
 
         fm: dict[str, Any] = {}
@@ -120,7 +118,7 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     entries = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:

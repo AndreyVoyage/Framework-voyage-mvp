@@ -8,7 +8,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 from voyage_framework.core.event_engine import EventEngine
-from voyage_framework.core.models import SecurityPolicy
+from voyage_framework.core.models import Event, EventType, SecurityPolicy
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.agents.runtime import AgentRuntime
@@ -65,7 +65,7 @@ class TestFullWorkflow:
         result = await tmp_runtime.run(
             role="developer",
             task="Run failing command",
-            plan=["nonexistent_command_xyz"],
+            plan=["python -c exit(1)"],
             project_id="retry-test",
         )
 
@@ -89,18 +89,11 @@ class TestFullWorkflow:
         """Контекст проекта накапливается."""
         for i in range(5):
             tmp_engine.append(
-                type("Event", (), {
-                    "event_type": type("ET", (), {"value": "plan_created"})(),
-                    "payload": {"n": i},
-                    "project_id": "ctx-test",
-                    "timestamp": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
-                    "event_id": str(i),
-                    "micro_phase": None,
-                    "correlation_id": None,
-                    "causation_id": None,
-                    "agent_id": None,
-                    "role": None,
-                })()
+                Event(
+                    event_type=EventType.PLAN_CREATED,
+                    payload={"n": i},
+                    project_id="ctx-test",
+                )
             )
 
         ctx = tmp_engine.get_project_context("ctx-test")

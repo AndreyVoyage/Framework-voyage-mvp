@@ -84,4 +84,4 @@ class TestEventEngine:
         engine.append(Event(event_type=EventType.PLAN_CREATED, payload={"test": True}))
         assert jsonl.exists()
         content = jsonl.read_text()
-        assert "PLAN_CREATED" in content
+        assert "plan_created" in content

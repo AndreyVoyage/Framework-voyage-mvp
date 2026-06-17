@@ -13,15 +13,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
 from pathlib import Path
 
+from voyage_framework.agents.runtime import AgentRuntime
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import SecurityPolicy
-from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.security.policy import PolicyEnforcer
-from voyage_framework.agents.runtime import AgentRuntime
+from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
 
 
@@ -66,13 +65,12 @@ def show_status(args: argparse.Namespace) -> int:
     # Последние события
     events = engine.get_events(limit=5)
     if events:
-        print("
-📝 Last events:")
+        print("\n📝 Last events:")
         for ev in events:
-            print(f"   [{ev.timestamp.strftime('%H:%M:%S')}] {ev.event_type.value} | {ev.project_id}")
+            ts = ev.timestamp.strftime('%H:%M:%S')
+            print(f"   [{ts}] {ev.event_type.value} | {ev.project_id}")
     else:
-        print("
-📝 No events yet. Run 'voyage run' to start.")
+        print("\n📝 No events yet. Run 'voyage run' to start.")
 
     return 0
 
@@ -121,7 +119,7 @@ def generate_task(args: argparse.Namespace) -> int:
 
     task_path, context_path = generator.write_task_files(spec)
 
-    print(f"✅ Task generated:")
+    print("✅ Task generated:")
     print(f"   TASK.md:      {task_path.absolute()}")
     print(f"   CONTEXT.json: {context_path.absolute()}")
     print(f"   Task ID:      {spec.task_id}")
@@ -138,7 +136,8 @@ def show_events(args: argparse.Namespace) -> int:
 
     print(f"📊 Events (limit={args.limit}):")
     for ev in events:
-        print(f"   {ev.event_id[:8]} | {ev.event_type.value:25} | {ev.timestamp.strftime('%Y-%m-%d %H:%M:%S')} | {ev.project_id}")
+        ts = ev.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        print(f"   {ev.event_id[:8]} | {ev.event_type.value:25} | {ts} | {ev.project_id}")
 
     return 0
 
@@ -157,13 +156,22 @@ def show_approvals(args: argparse.Namespace) -> int:
 
     print(f"⏳ Pending approvals ({len(pending)}):")
     for req in pending:
-        print(f"   {req.request_id[:8]} | {' '.join(req.command[:3])}... | {req.role} | {req.timestamp.strftime('%H:%M:%S')}")
+        ts = req.timestamp.strftime('%H:%M:%S')
+        cmd = ' '.join(req.command[:3])
+        print(f"   {req.request_id[:8]} | {cmd}... | {req.role} | {ts}")
 
     return 0
 
 
 def main() -> int:
     """Точка входа CLI."""
+    # Гарантировать UTF-8 для stdout/stderr на Windows
+    if sys.platform == "win32":
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(
         prog="voyage",
         description="Voyage AI Dev Framework v4.0",

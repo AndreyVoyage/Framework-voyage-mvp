@@ -6,15 +6,19 @@ Checkpoint после каждого node.
 
 from __future__ import annotations
 
-import asyncio
-from typing import Any, Optional
+from typing import Any
 
-from voyage_framework.core.models import (
-    AgentState, AgentStatus, Event, EventType, ToolResult, NodeResult,
-)
 from voyage_framework.core.event_engine import EventEngine
-from voyage_framework.security.sandbox import SecureExecutor
+from voyage_framework.core.models import (
+    AgentState,
+    AgentStatus,
+    Event,
+    EventType,
+    NodeResult,
+    ToolResult,
+)
 from voyage_framework.security.policy import PolicyEnforcer
+from voyage_framework.security.sandbox import SecureExecutor
 
 
 class AgentRuntime:

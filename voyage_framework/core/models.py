@@ -6,16 +6,16 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_serializer
 from ulid import ULID
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Типы событий в системе."""
 
     PLAN_CREATED = "plan_created"
@@ -46,13 +46,13 @@ class Event(BaseModel):
     event_id: str = Field(default_factory=lambda: str(ULID()), description="ULID — сортируемый ID")
     event_type: EventType = Field(..., description="Тип события")
     payload: dict[str, Any] = Field(default_factory=dict, description="Данные события")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     project_id: str = Field(default="default", description="ID проекта (ADR-005)")
-    micro_phase: Optional[str] = Field(default=None, description="Микро-фаза")
-    correlation_id: Optional[str] = Field(default=None, description="ID сессии/задачи")
-    causation_id: Optional[str] = Field(default=None, description="ID вызвавшего события")
-    agent_id: Optional[str] = Field(default=None, description="ID агента")
-    role: Optional[str] = Field(default=None, description="Роль агента")
+    micro_phase: str | None = Field(default=None, description="Микро-фаза")
+    correlation_id: str | None = Field(default=None, description="ID сессии/задачи")
+    causation_id: str | None = Field(default=None, description="ID вызвавшего события")
+    agent_id: str | None = Field(default=None, description="ID агента")
+    role: str | None = Field(default=None, description="Роль агента")
 
     @field_serializer("timestamp")
     def serialize_timestamp(self, value: datetime) -> str:
@@ -63,7 +63,7 @@ class Event(BaseModel):
         return json.dumps(self.model_dump(), ensure_ascii=False, default=str)
 
     @classmethod
-    def from_jsonl(cls, line: str) -> "Event":
+    def from_jsonl(cls, line: str) -> Event:
         """Десериализация из JSONL."""
         data = json.loads(line)
         data["timestamp"] = datetime.fromisoformat(data["timestamp"])
@@ -71,7 +71,7 @@ class Event(BaseModel):
         return cls(**data)
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Статусы жизненного цикла агента."""
 
     IDLE = "idle"
@@ -100,8 +100,8 @@ class AgentState(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     results: list[ToolResult] = Field(default_factory=list)
     project_id: str = Field(default="default")
-    correlation_id: Optional[str] = None
-    checkpoint_id: Optional[str] = None
+    correlation_id: str | None = None
+    checkpoint_id: str | None = None
 
 
 class ToolResult(BaseModel):
@@ -112,9 +112,9 @@ class ToolResult(BaseModel):
     stderr: str = ""
     exit_code: int = 0
     blocked: bool = False
-    reason: Optional[str] = None
+    reason: str | None = None
     approval_required: bool = False
-    execution_time_ms: Optional[float] = None
+    execution_time_ms: float | None = None
 
 
 class NodeResult(BaseModel):
@@ -124,10 +124,10 @@ class NodeResult(BaseModel):
     success: bool
     state: AgentState
     output: dict[str, Any] = Field(default_factory=dict)
-    transition_to: Optional[str] = None
+    transition_to: str | None = None
 
 
-class SecurityLevel(str, Enum):
+class SecurityLevel(StrEnum):
     """Уровни безопасности команд."""
 
     SAFE = "safe"
@@ -168,7 +168,7 @@ class SecurityPolicy(BaseModel):
         arbitrary_types_allowed = True
 
 
-class ApprovalStatus(str, Enum):
+class ApprovalStatus(StrEnum):
     """Статусы approval запросов."""
 
     PENDING = "pending"
@@ -184,15 +184,15 @@ class ApprovalRequest(BaseModel):
     command: list[str] = Field(..., description="Команда, требующая approval")
     agent_id: str
     role: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     status: ApprovalStatus = Field(default=ApprovalStatus.PENDING)
-    approved_by: Optional[str] = None
-    approval_timestamp: Optional[datetime] = None
-    reason: Optional[str] = None
+    approved_by: str | None = None
+    approval_timestamp: datetime | None = None
+    reason: str | None = None
     ttl_hours: int = Field(default=24, description="Время жизни запроса")
 
     @field_serializer("timestamp", "approval_timestamp")
-    def serialize_dt(self, value: Optional[datetime]) -> Optional[str]:
+    def serialize_dt(self, value: datetime | None) -> str | None:
         return value.isoformat() if value else None
 
 
@@ -219,7 +219,7 @@ class TaskSpec(BaseModel):
     task_id: str = Field(default_factory=lambda: str(ULID()))
     role: str = Field(..., description="Роль, которая выполняет задачу")
     task: str = Field(..., description="Описание задачи")
-    micro_phase: Optional[str] = None
+    micro_phase: str | None = None
     project_id: str = Field(default="default")
     context_summary: str = Field(default="")
     relevant_files: list[str] = Field(default_factory=list)
@@ -239,7 +239,7 @@ class RuleSuggestion(BaseModel):
     rule_text: str = Field(..., description="Текст правила")
     severity: Literal["must", "should", "may", "experimental"] = "should"
     category: Literal["arch", "ops", "style"] = "ops"
-    source_event_id: Optional[str] = None
+    source_event_id: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
     def hash(self) -> str:

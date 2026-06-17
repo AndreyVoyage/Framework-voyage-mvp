@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from voyage_framework.core.models import Event, EventType
-from voyage_framework.core.storage import atomic_write, append_jsonl, load_jsonl, journal_rotate
+from voyage_framework.core.storage import append_jsonl, journal_rotate
 
 
 class EventEngine:
@@ -105,9 +105,9 @@ class EventEngine:
 
     def get_events(
         self,
-        project_id: Optional[str] = None,
-        event_type: Optional[EventType] = None,
-        correlation_id: Optional[str] = None,
+        project_id: str | None = None,
+        event_type: EventType | None = None,
+        correlation_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[Event]:
@@ -145,7 +145,7 @@ class EventEngine:
     def get_events_by_type(
         self,
         event_type: EventType,
-        project_id: Optional[str] = None,
+        project_id: str | None = None,
         limit: int = 100,
     ) -> list[Event]:
         """Получить события конкретного типа."""
@@ -157,8 +157,8 @@ class EventEngine:
 
     def replay(
         self,
-        project_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        project_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> list[Event]:
         """Replay событий в хронологическом порядке.
 
@@ -208,7 +208,7 @@ class EventEngine:
 
         return context
 
-    def count(self, project_id: Optional[str] = None) -> int:
+    def count(self, project_id: str | None = None) -> int:
         """Количество событий."""
         query = "SELECT COUNT(*) FROM events WHERE 1=1"
         params: list[Any] = []

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from voyage_framework.core.models import EventEngine, Event, EventType
+from voyage_framework.core.event_engine import EventEngine
+from voyage_framework.core.models import Event, EventType
 
 
 class AcceptanceTracker:

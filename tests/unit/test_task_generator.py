@@ -51,8 +51,8 @@ class TestTaskGenerator:
 
         assert task_path.exists()
         assert context_path.exists()
-        assert "TASK" in task_path.read_text()
-        assert "developer" in context_path.read_text()
+        assert "TASK" in task_path.read_text(encoding="utf-8")
+        assert "developer" in context_path.read_text(encoding="utf-8")
 
     def test_event_logged(self, tmp_path):
         db = tmp_path / "events.db"

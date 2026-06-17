@@ -7,7 +7,6 @@ PolicyEnforcer проверяет разрешения в runtime.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -74,7 +73,7 @@ class PolicyEnforcer:
         ),
     }
 
-    def __init__(self, policies: Optional[dict[str, RolePolicy]] = None) -> None:
+    def __init__(self, policies: dict[str, RolePolicy] | None = None) -> None:
         self.policies = policies or self.DEFAULT_POLICIES.copy()
 
     def get_policy(self, role: str) -> RolePolicy:
@@ -95,7 +94,7 @@ class PolicyEnforcer:
         }
         return action_map.get(action, False)
 
-    def check_path(self, role: str, path: str) -> tuple[bool, Optional[str]]:
+    def check_path(self, role: str, path: str) -> tuple[bool, str | None]:
         """Проверить доступ к пути."""
         policy = self.get_policy(role)
 

@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
 
 from voyage_framework.core.models import ApprovalRequest, ApprovalStatus
 
@@ -27,12 +26,13 @@ class ApprovalQueue:
         if not self.queue_path.exists():
             return
         try:
-            with open(self.queue_path, "r", encoding="utf-8") as f:
+            with open(self.queue_path, encoding="utf-8") as f:
                 data = json.load(f)
             for req_data in data.get("requests", []):
                 req_data["timestamp"] = datetime.fromisoformat(req_data["timestamp"])
                 if req_data.get("approval_timestamp"):
-                    req_data["approval_timestamp"] = datetime.fromisoformat(req_data["approval_timestamp"])
+                    raw_ts = req_data["approval_timestamp"]
+                    req_data["approval_timestamp"] = datetime.fromisoformat(raw_ts)
                 req = ApprovalRequest(**req_data)
                 self._requests[req.request_id] = req
         except (json.JSONDecodeError, KeyError):
@@ -50,7 +50,9 @@ class ApprovalQueue:
                     "timestamp": req.timestamp.isoformat(),
                     "status": req.status.value,
                     "approved_by": req.approved_by,
-                    "approval_timestamp": req.approval_timestamp.isoformat() if req.approval_timestamp else None,
+                    "approval_timestamp": (
+                        req.approval_timestamp.isoformat() if req.approval_timestamp else None
+                    ),
                     "reason": req.reason,
                     "ttl_hours": req.ttl_hours,
                 }
@@ -70,18 +72,18 @@ class ApprovalQueue:
         """Получить все pending запросы."""
         return [r for r in self._requests.values() if r.status == ApprovalStatus.PENDING]
 
-    def approve(self, request_id: str, approved_by: str) -> Optional[ApprovalRequest]:
+    def approve(self, request_id: str, approved_by: str) -> ApprovalRequest | None:
         """Approve запрос."""
         req = self._requests.get(request_id)
         if not req:
             return None
         req.status = ApprovalStatus.APPROVED
         req.approved_by = approved_by
-        req.approval_timestamp = datetime.now(timezone.utc)
+        req.approval_timestamp = datetime.now(UTC)
         self._save()
         return req
 
-    def reject(self, request_id: str, reason: str | None = None) -> Optional[ApprovalRequest]:
+    def reject(self, request_id: str, reason: str | None = None) -> ApprovalRequest | None:
         """Reject запрос."""
         req = self._requests.get(request_id)
         if not req:
@@ -93,7 +95,7 @@ class ApprovalQueue:
 
     def cleanup_expired(self) -> int:
         """Удалить просроченные запросы. Возвращает количество удалённых."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired = [
             rid for rid, req in self._requests.items()
             if req.status == ApprovalStatus.PENDING
@@ -105,7 +107,7 @@ class ApprovalQueue:
             self._save()
         return len(expired)
 
-    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    def get_request(self, request_id: str) -> ApprovalRequest | None:
         """Получить запрос по ID."""
         return self._requests.get(request_id)
 
