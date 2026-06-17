@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from voyage_framework.agents.runtime import AgentRuntime
@@ -203,6 +204,117 @@ def evaluate_project(args: argparse.Namespace) -> int:
     return 0
 
 
+def graph_visualize(args: argparse.Namespace) -> int:
+    """Визуализировать граф workflow."""
+    from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
+    from voyage_framework.core.event_engine import EventEngine
+    from voyage_framework.security.policy import PolicyEnforcer
+    from voyage_framework.security.sandbox import SecureExecutor
+
+    engine = EventEngine()
+    policy = PolicyEnforcer()
+    executor = SecureExecutor(SecurityPolicy(), project_root=Path.cwd())
+    runtime = LangGraphRuntime(engine, executor, policy)
+
+    mermaid = runtime.visualize()
+    print(mermaid)
+
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(mermaid, encoding="utf-8")
+    print(f"📝 Graph saved to {output_path.absolute()}")
+    return 0
+
+
+async def graph_run(args: argparse.Namespace) -> int:
+    """Запустить агента через LangGraphRuntime."""
+    from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
+    from voyage_framework.core.event_engine import EventEngine
+    from voyage_framework.improvement.evaluator import Evaluator
+    from voyage_framework.improvement.feedback_loop import FeedbackLoop
+    from voyage_framework.improvement.golden_dataset import GoldenDataset
+    from voyage_framework.improvement.rule_engine import RuleEngine
+    from voyage_framework.security.docker_backend import DockerBackend
+    from voyage_framework.security.policy import PolicyEnforcer
+    from voyage_framework.security.sandbox import SecureExecutor
+
+    engine = EventEngine()
+    policy = PolicyEnforcer()
+    security = SecurityPolicy()
+    if args.backend == "docker":
+        executor = SecureExecutor(
+            security,
+            project_root=Path.cwd(),
+            backend=DockerBackend(project_root=Path.cwd(), image=args.docker_image),
+        )
+    else:
+        executor = SecureExecutor(security, project_root=Path.cwd())
+
+    feedback_loop = None
+    if args.feedback:
+        evaluator = Evaluator(project_root=Path.cwd())
+        rule_engine = RuleEngine(engine=engine)
+        golden = GoldenDataset(engine=engine)
+        feedback_loop = FeedbackLoop(engine, evaluator, rule_engine, golden)
+
+    runtime = LangGraphRuntime(engine, executor, policy, feedback_loop=feedback_loop)
+    plan = args.plan.split(";") if args.plan else [args.task]
+
+    result = await runtime.run(
+        role=args.role,
+        task=args.task,
+        plan=plan,
+        project_id=args.project or "default",
+        correlation_id=args.correlation_id,
+    )
+
+    if result.success:
+        print(f"✅ Graph completed. Confidence: {result.state.confidence:.2f}")
+    else:
+        print(f"❌ Graph failed. Status: {result.output.get('status')}")
+        if result.output.get("error"):
+            print(f"   Error: {result.output['error']}")
+
+    return 0 if result.success else 1
+
+
+def graph_state(args: argparse.Namespace) -> int:
+    """Показать последний сохранённый state по correlation_id."""
+    from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
+    from voyage_framework.core.event_engine import EventEngine
+    from voyage_framework.security.policy import PolicyEnforcer
+    from voyage_framework.security.sandbox import SecureExecutor
+
+    engine = EventEngine()
+    policy = PolicyEnforcer()
+    executor = SecureExecutor(SecurityPolicy(), project_root=Path.cwd())
+    runtime = LangGraphRuntime(engine, executor, policy)
+
+    state = runtime.get_state(args.correlation_id)
+    if state is None:
+        print(f"❌ No state found for correlation_id={args.correlation_id}")
+        return 1
+
+    print(f"📊 State for correlation_id={args.correlation_id}:")
+    for key, value in state.model_dump().items():
+        print(f"   {key}: {value}")
+    return 0
+
+
+def _dispatch_graph(args: argparse.Namespace) -> int:
+    """Диспетчер подкоманд graph."""
+    if not args.graph_command:
+        print("❌ No graph subcommand provided. Use: visualize, run, state")
+        return 1
+    if args.graph_command == "visualize":
+        return graph_visualize(args)
+    if args.graph_command == "run":
+        return asyncio.run(graph_run(args))
+    if args.graph_command == "state":
+        return graph_state(args)
+    return 1
+
+
 def main() -> int:
     """Точка входа CLI."""
     # Гарантировать UTF-8 для stdout/stderr на Windows
@@ -263,13 +375,54 @@ def main() -> int:
     evaluate_parser.add_argument("--dir", default=".", help="Project directory")
     evaluate_parser.add_argument("--project", default="default", help="Project ID")
 
+    # graph
+    graph_parser = subparsers.add_parser("graph", help="LangGraph workflow commands")
+    graph_subparsers = graph_parser.add_subparsers(dest="graph_command")
+
+    visualize_parser = graph_subparsers.add_parser("visualize", help="Visualize workflow graph")
+    visualize_parser.add_argument(
+        "--output",
+        default=".voyage/graph.md",
+        help="Output path for Mermaid graph",
+    )
+
+    graph_run_parser = graph_subparsers.add_parser("run", help="Run agent via LangGraph")
+    graph_run_parser.add_argument("role", help="Agent role")
+    graph_run_parser.add_argument("--task", default="", help="Task description")
+    graph_run_parser.add_argument("--plan", default="", help="Execution plan (semicolon-separated)")
+    graph_run_parser.add_argument("--project", default="default", help="Project ID")
+    graph_run_parser.add_argument(
+        "--correlation-id",
+        default=None,
+        help="Correlation ID for checkpointing",
+    )
+    graph_run_parser.add_argument(
+        "--backend",
+        choices=["subprocess", "docker"],
+        default="subprocess",
+        help="Sandbox backend (default: subprocess)",
+    )
+    graph_run_parser.add_argument(
+        "--docker-image",
+        default="python:3.11-slim",
+        help="Docker image when --backend=docker",
+    )
+    graph_run_parser.add_argument(
+        "--feedback",
+        action="store_true",
+        help="Enable FeedbackLoop",
+    )
+
+    graph_state_parser = graph_subparsers.add_parser("state", help="Show graph state")
+    graph_state_parser.add_argument("correlation_id", help="Correlation ID")
+
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         return 1
 
-    commands = {
+    commands: dict[str, Callable[[argparse.Namespace], int]] = {
         "init": init_project,
         "status": show_status,
         "run": lambda a: asyncio.run(run_agent(a)),
@@ -277,9 +430,15 @@ def main() -> int:
         "events": show_events,
         "approve": show_approvals,
         "evaluate": evaluate_project,
+        "graph": _dispatch_graph,
     }
 
-    return commands[args.command](args)
+    command_name: str = args.command
+    handler = commands.get(command_name)
+    if handler is None:
+        parser.print_help()
+        return 1
+    return handler(args)
 
 
 if __name__ == "__main__":

@@ -41,6 +41,9 @@ class EventType(StrEnum):
     EVALUATION_COMPLETED = "evaluation_completed"
     RULE_SUGGESTED = "rule_suggested"
     GOLDEN_MATCH_FOUND = "golden_match_found"
+    NODE_STARTED = "node_started"
+    NODE_COMPLETED = "node_completed"
+    EDGE_TAKEN = "edge_taken"
 
 
 class Event(BaseModel):

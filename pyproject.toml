@@ -52,8 +52,12 @@ ast = [
     "tree-sitter-typescript>=0.21",
 ]
 improvement = []
+langgraph = [
+    "langgraph>=0.2",
+    "langchain>=0.3",
+]
 all = [
-    "voyage-framework[dev,semantic,ast]",
+    "voyage-framework[dev,semantic,ast,improvement,langgraph]",
 ]
 
 [project.scripts]

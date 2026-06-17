@@ -7,6 +7,7 @@
 __version__ = "4.0.0"
 __author__ = "AndreyVoyage"
 
+from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
 from voyage_framework.ast_tools import ASTParser, CodeIndexer
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import (
@@ -23,6 +24,7 @@ from voyage_framework.improvement import (
     GoldenSolution,
     RuleEngine,
 )
+from voyage_framework.langgraph_tools import MermaidExporter, VoyageGraphBuilder
 from voyage_framework.memory import CodeSearch, SemanticStore
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
@@ -45,4 +47,7 @@ __all__ = [
     "RuleEngine",
     "Evaluator",
     "FeedbackLoop",
+    "VoyageGraphBuilder",
+    "LangGraphRuntime",
+    "MermaidExporter",
 ]
