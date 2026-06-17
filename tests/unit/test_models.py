@@ -1,11 +1,16 @@
 """Unit tests for core models."""
 
-import pytest
-from datetime import datetime, timezone
 from voyage_framework.core.models import (
-    Event, EventType, AgentState, AgentStatus, ToolResult,
-    SecurityPolicy, SecurityLevel, ApprovalRequest, ApprovalStatus,
-    TaskSpec, ProjectContext,
+    AgentState,
+    AgentStatus,
+    ApprovalRequest,
+    ApprovalStatus,
+    Event,
+    EventType,
+    ProjectContext,
+    SecurityPolicy,
+    TaskSpec,
+    ToolResult,
 )
 
 

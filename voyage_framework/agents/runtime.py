@@ -17,6 +17,7 @@ from voyage_framework.core.models import (
     NodeResult,
     ToolResult,
 )
+from voyage_framework.memory.code_search import CodeSearch
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.security.sandbox import SecureExecutor
 
@@ -33,10 +34,12 @@ class AgentRuntime:
         engine: EventEngine,
         executor: SecureExecutor,
         policy: PolicyEnforcer,
+        code_search: CodeSearch | None = None,
     ) -> None:
         self.engine = engine
         self.executor = executor
         self.policy = policy
+        self.code_search = code_search
         self._checkpoints: dict[str, AgentState] = {}
 
     async def run(
@@ -66,6 +69,10 @@ class AgentRuntime:
             project_id=project_id,
             correlation_id=correlation_id,
         )
+
+        # Поиск релевантного контекста в semantic memory
+        if self.code_search:
+            state.memory_context = self.code_search.query(task, top_k=5)
 
         # Логировать старт
         self.engine.append(Event(
@@ -110,6 +117,7 @@ class AgentRuntime:
 
             # DONE
             state.status = AgentStatus.COMPLETED
+            self._store_task_memory(state, success=True)
             return self._finalize(state, success=True)
 
         except Exception as e:
@@ -196,6 +204,39 @@ class AgentRuntime:
             state=state,
             output=payload,
         )
+
+    def _store_task_memory(self, state: AgentState, success: bool) -> None:
+        """Сохранить summary задачи в semantic memory."""
+        if not self.code_search:
+            return
+
+        summary = f"Task: {state.task}\nRole: {state.role}\nSuccess: {success}"
+        entry_id = f"task:{state.agent_id}"
+        from voyage_framework.core.models import MemoryEntry
+        self.code_search.store.add_documents([
+            MemoryEntry(
+                id=entry_id,
+                text=summary,
+                metadata={
+                    "agent_id": state.agent_id,
+                    "role": state.role,
+                    "project_id": state.project_id,
+                    "success": success,
+                    "kind": "task_summary",
+                },
+            ),
+        ])
+        self.engine.append(Event(
+            event_type=EventType.MEMORY_STORED,
+            payload={
+                "agent_id": state.agent_id,
+                "entry_id": entry_id,
+                "collection": self.code_search.store.collection_name,
+            },
+            project_id=state.project_id,
+            agent_id=state.agent_id,
+            role=state.role,
+        ))
 
     def resume_from_checkpoint(self, checkpoint_id: str) -> AgentState | None:
         """Возобновить выполнение из checkpoint."""

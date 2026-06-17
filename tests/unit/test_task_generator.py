@@ -1,8 +1,5 @@
 """Unit tests for TaskGenerator."""
 
-import pytest
-import tempfile
-from pathlib import Path
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.specs.task_generator import TaskGenerator
 
@@ -59,7 +56,7 @@ class TestTaskGenerator:
         engine = EventEngine(db_path=db)
         generator = TaskGenerator(engine)
 
-        spec = generator.generate(role="developer", task="Test", project_id="test")
+        generator.generate(role="developer", task="Test", project_id="test")
         events = engine.get_events(project_id="test")
         assert len(events) == 1
         assert events[0].event_type.value == "plan_created"

@@ -1,8 +1,5 @@
 """Unit tests for EventEngine."""
 
-import pytest
-import tempfile
-from pathlib import Path
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import Event, EventType
 
@@ -10,7 +7,7 @@ from voyage_framework.core.models import Event, EventType
 class TestEventEngine:
     def test_init_creates_db(self, tmp_path):
         db = tmp_path / "events.db"
-        engine = EventEngine(db_path=db)
+        _engine = EventEngine(db_path=db)
         assert db.exists()
 
     def test_append_and_get(self, tmp_path):

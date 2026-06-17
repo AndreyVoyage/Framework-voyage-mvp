@@ -1,9 +1,9 @@
 """Unit tests for SecureExecutor."""
 
+
 import pytest
-import asyncio
-from pathlib import Path
-from voyage_framework.core.models import SecurityPolicy, SecurityLevel
+
+from voyage_framework.core.models import SecurityLevel, SecurityPolicy
 from voyage_framework.security.sandbox import SecureExecutor, SubprocessBackend
 
 

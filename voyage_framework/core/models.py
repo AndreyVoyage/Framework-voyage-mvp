@@ -11,7 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from ulid import ULID
 
 
@@ -34,6 +34,10 @@ class EventType(StrEnum):
     RETRY_ATTEMPTED = "retry_attempted"
     DEAD_LETTER_CREATED = "dead_letter_created"
     COMPLEXITY_LIMIT_EXCEEDED = "complexity_limit_exceeded"
+    MEMORY_STORED = "memory_stored"
+    MEMORY_QUERIED = "memory_queried"
+    AST_INDEXED = "ast_indexed"
+    AST_PARSED = "ast_parsed"
 
 
 class Event(BaseModel):
@@ -102,6 +106,7 @@ class AgentState(BaseModel):
     project_id: str = Field(default="default")
     correlation_id: str | None = None
     checkpoint_id: str | None = None
+    memory_context: list[SearchResult] = Field(default_factory=list)
 
 
 class ToolResult(BaseModel):
@@ -164,8 +169,7 @@ class SecurityPolicy(BaseModel):
     allow_network: bool = False
     max_command_length: int = 4096
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ApprovalStatus(StrEnum):
@@ -194,6 +198,35 @@ class ApprovalRequest(BaseModel):
     @field_serializer("timestamp", "approval_timestamp")
     def serialize_dt(self, value: datetime | None) -> str | None:
         return value.isoformat() if value else None
+
+
+class MemoryEntry(BaseModel):
+    """Документ для хранения в semantic memory."""
+
+    id: str = Field(..., description="Уникальный ID документа")
+    text: str = Field(..., description="Текст для embedding и поиска")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Метаданные документа")
+    embedding: list[float] | None = Field(default=None, description="Опциональный вектор")
+
+
+class SearchResult(BaseModel):
+    """Результат semantic search."""
+
+    id: str = Field(..., description="ID найденного документа")
+    text: str = Field(default="", description="Текст документа")
+    score: float = Field(default=0.0, ge=0.0, le=1.0, description="Схожесть с запросом")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Метаданные документа")
+
+
+class Symbol(BaseModel):
+    """Символ исходного кода, извлечённый из AST."""
+
+    name: str = Field(..., description="Имя символа")
+    kind: Literal["function", "class", "import", "method"] = Field(..., description="Тип символа")
+    start_line: int = Field(..., ge=0, description="Начальная строка")
+    end_line: int = Field(..., ge=0, description="Конечная строка")
+    file: str = Field(..., description="Путь к файлу")
+    source: str = Field(default="", description="Исходный текст символа")
 
 
 class ProjectContext(BaseModel):

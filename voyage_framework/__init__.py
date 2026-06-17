@@ -7,6 +7,7 @@
 __version__ = "4.0.0"
 __author__ = "AndreyVoyage"
 
+from voyage_framework.ast_tools import ASTParser, CodeIndexer
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import (
     AgentState,
@@ -15,6 +16,7 @@ from voyage_framework.core.models import (
     SecurityPolicy,
     ToolResult,
 )
+from voyage_framework.memory import CodeSearch, SemanticStore
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
 
@@ -27,4 +29,8 @@ __all__ = [
     "SecureExecutor",
     "SecurityPolicy",
     "TaskGenerator",
+    "SemanticStore",
+    "CodeSearch",
+    "ASTParser",
+    "CodeIndexer",
 ]
