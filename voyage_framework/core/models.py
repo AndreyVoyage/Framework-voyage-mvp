@@ -151,7 +151,7 @@ class SecurityPolicy(BaseModel):
 
     project_root: Path = Field(default=Path("."))
     allowed_commands: set[str] = Field(default_factory=lambda: {
-        "git", "pytest", "mypy", "ruff", "python", "pip", "cat", "grep", "find",
+        "git", "pytest", "mypy", "ruff", "python", "pip", "docker", "cat", "grep", "find",
         "ls", "pwd", "echo", "df", "ps", "mkdir", "touch",
     })
     dangerous_commands: set[str] = Field(default_factory=lambda: {

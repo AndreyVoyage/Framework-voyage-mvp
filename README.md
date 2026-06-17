@@ -133,6 +133,8 @@ voyage run <role>        # Запустить агента
   --task "..."           # Описание задачи
   --plan "step1;step2"   # План выполнения
   --project my-project   # ID проекта
+  --backend docker       # Использовать Docker backend (default: subprocess)
+  --docker-image python:3.11-slim  # Образ для Docker backend
 voyage task <role>       # Сгенерировать TASK.md + CONTEXT.json
   --task "..."           # Обязательно
   --phase M1             # Микро-фаза
@@ -144,6 +146,27 @@ voyage approve           # Показать pending approval запросы
 ```
 
 ---
+
+## 🐳 Docker backend
+
+`SecureExecutor` поддерживает запуск команд в изолированном Docker-контейнере:
+
+```bash
+voyage run developer \
+  --backend docker \
+  --docker-image python:3.11-slim \
+  --task "Check python version" \
+  --plan "python --version"
+```
+
+Что происходит:
+- Текущая директория монтируется в `/workspace` контейнера (`--volume=<project_root>:/workspace`).
+- Контейнер запускается с `--rm`, `--network=none` и текущим пользователем (Linux/macOS).
+- Команды выполняются внутри образа, что изолирует хост-систему от side-эффектов.
+
+Требования: установленный Docker (Docker Desktop на Windows).
+
+----
 
 ## 📝 Пример TASK.md (генерируется автоматически)
 

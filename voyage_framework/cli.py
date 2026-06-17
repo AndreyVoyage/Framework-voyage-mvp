@@ -80,7 +80,16 @@ async def run_agent(args: argparse.Namespace) -> int:
     engine = EventEngine()
     policy = PolicyEnforcer()
     security = SecurityPolicy()
-    executor = SecureExecutor(security)
+    if args.backend == "docker":
+        from voyage_framework.security.docker_backend import DockerBackend
+
+        executor = SecureExecutor(
+            security,
+            project_root=Path.cwd(),
+            backend=DockerBackend(project_root=Path.cwd(), image=args.docker_image),
+        )
+    else:
+        executor = SecureExecutor(security, project_root=Path.cwd())
     runtime = AgentRuntime(engine, executor, policy)
 
     role = args.role
@@ -219,6 +228,17 @@ def main() -> int:
     run_parser.add_argument("--task", default="", help="Task description")
     run_parser.add_argument("--plan", default="", help="Execution plan (semicolon-separated)")
     run_parser.add_argument("--project", default="default", help="Project ID")
+    run_parser.add_argument(
+        "--backend",
+        choices=["subprocess", "docker"],
+        default="subprocess",
+        help="Sandbox backend (default: subprocess)",
+    )
+    run_parser.add_argument(
+        "--docker-image",
+        default="python:3.11-slim",
+        help="Docker image when --backend=docker",
+    )
 
     # task
     task_parser = subparsers.add_parser("task", help="Generate TASK.md")

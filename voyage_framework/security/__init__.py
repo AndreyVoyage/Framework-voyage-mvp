@@ -2,8 +2,9 @@
 
 from .approval import ApprovalManager, ApprovalQueue
 from .audit import AuditLogger
+from .docker_backend import DockerBackend
 from .policy import PolicyEnforcer, RolePolicy
-from .sandbox import DockerBackend, SandboxBackend, SecureExecutor, SubprocessBackend
+from .sandbox import SandboxBackend, SecureExecutor, SubprocessBackend
 
 __all__ = [
     "SecureExecutor", "SandboxBackend", "DockerBackend", "SubprocessBackend",

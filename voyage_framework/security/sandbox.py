@@ -68,18 +68,6 @@ class SubprocessBackend(SandboxBackend):
             )
 
 
-class DockerBackend(SandboxBackend):
-    """Backend через Docker (future, requires Docker)."""
-
-    async def execute(self, command: list[str], cwd: Path | None = None) -> ToolResult:
-        # TODO: реализовать через docker run --rm
-        return ToolResult(
-            success=False,
-            stderr="DockerBackend not yet implemented. Use SubprocessBackend.",
-            exit_code=1,
-        )
-
-
 class SecureExecutor:
     """Безопасный executor с 5 уровнями защиты.
 
@@ -92,10 +80,18 @@ class SecureExecutor:
         policy: SecurityPolicy,
         project_root: Path | str = ".",
         backend: SandboxBackend | None = None,
+        backend_type: str = "subprocess",
     ) -> None:
         self.policy = policy
         self.project_root = Path(project_root).resolve()
-        self.backend = backend or SubprocessBackend()
+        if backend is not None:
+            self.backend = backend
+        elif backend_type == "docker":
+            from voyage_framework.security.docker_backend import DockerBackend
+
+            self.backend = DockerBackend(project_root=self.project_root)
+        else:
+            self.backend = SubprocessBackend()
         self._audit_log: list[dict[str, Any]] = []
 
     def _check_dangerous_patterns(self, command: list[str]) -> tuple[bool, str | None]:
@@ -247,3 +243,4 @@ class SecureExecutor:
             agent_id=agent_id,
             role=role,
         )
+
