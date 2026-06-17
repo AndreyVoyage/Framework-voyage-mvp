@@ -44,6 +44,9 @@ class EventType(StrEnum):
     NODE_STARTED = "node_started"
     NODE_COMPLETED = "node_completed"
     EDGE_TAKEN = "edge_taken"
+    PROCESS_STEP = "process_step"
+    DECISION_RECORDED = "decision_recorded"
+    TUTORIAL_GENERATED = "tutorial_generated"
 
 
 class Event(BaseModel):

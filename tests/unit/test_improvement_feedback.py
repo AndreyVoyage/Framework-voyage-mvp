@@ -47,25 +47,35 @@ class TestFeedbackLoop:
         assert len(result.new_rules) > 0
 
     def test_should_retry_low_score(self, loop) -> None:
-        fb = type("obj", (object,), {
-            "evaluation": EvaluationResult(overall_score=0.3, syntax_valid=True),
-        })()
+        fb = type(
+            "obj",
+            (object,),
+            {
+                "evaluation": EvaluationResult(overall_score=0.3, syntax_valid=True),
+            },
+        )()
 
         assert loop.should_retry(fb) is True
 
     def test_should_not_retry_high_score(self, loop) -> None:
-        fb = type("obj", (object,), {
-            "evaluation": EvaluationResult(overall_score=0.9, syntax_valid=True),
-        })()
+        fb = type(
+            "obj",
+            (object,),
+            {
+                "evaluation": EvaluationResult(overall_score=0.9, syntax_valid=True),
+            },
+        )()
 
         assert loop.should_retry(fb) is False
 
     @pytest.mark.asyncio
     async def test_golden_match_found(self, loop) -> None:
-        loop.golden_dataset.add_solution(GoldenSolution(
-            task_pattern="login",
-            reference_code="def login(): pass",
-        ))
+        loop.golden_dataset.add_solution(
+            GoldenSolution(
+                task_pattern="login",
+                reference_code="def login(): pass",
+            )
+        )
         state = AgentState(role="developer", task="login user", plan=["echo ok"])
         state.results.append(ToolResult(success=True, stdout="def login(): pass"))
         node = NodeResult(node_name="agent", success=True, state=state)

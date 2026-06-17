@@ -1,6 +1,5 @@
 """Unit tests for SecureExecutor."""
 
-
 import pytest
 
 from voyage_framework.core.models import SecurityLevel, SecurityPolicy

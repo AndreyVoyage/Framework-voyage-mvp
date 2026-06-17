@@ -9,6 +9,14 @@ __author__ = "AndreyVoyage"
 
 from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
 from voyage_framework.ast_tools import ASTParser, CodeIndexer
+from voyage_framework.chronicler import (
+    DecisionLog,
+    DocsBuilder,
+    ProcessJournal,
+    ReplayGenerator,
+    TutorialDraft,
+    TutorialGenerator,
+)
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import (
     AgentState,
@@ -50,4 +58,10 @@ __all__ = [
     "VoyageGraphBuilder",
     "LangGraphRuntime",
     "MermaidExporter",
+    "ProcessJournal",
+    "ReplayGenerator",
+    "DecisionLog",
+    "TutorialDraft",
+    "TutorialGenerator",
+    "DocsBuilder",
 ]

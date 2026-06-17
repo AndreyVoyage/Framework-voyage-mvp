@@ -18,11 +18,86 @@ from collections.abc import Callable
 from pathlib import Path
 
 from voyage_framework.agents.runtime import AgentRuntime
+from voyage_framework.chronicler.decision_log import DecisionLog
+from voyage_framework.chronicler.docs_builder import DocsBuilder
+from voyage_framework.chronicler.journal import ProcessJournal
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import SecurityPolicy
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
+
+
+def _docs_engine_and_builder(
+    args: argparse.Namespace,
+) -> tuple[EventEngine, ProcessJournal, DecisionLog, DocsBuilder]:
+    """Создать EventEngine, ProcessJournal, DecisionLog и DocsBuilder."""
+    engine = EventEngine()
+    journal = ProcessJournal(
+        engine,
+        project_id=getattr(args, "project", "default") or "default",
+    )
+    decision_log = DecisionLog(engine)
+    builder = DocsBuilder(journal, decision_log)
+    return engine, journal, decision_log, builder
+
+
+def docs_build(args: argparse.Namespace) -> int:
+    """Собрать всю документацию в docs/."""
+    _, _, _, builder = _docs_engine_and_builder(args)
+    output_dir = Path(args.output) if args.output else Path("docs")
+    builder.build_all(
+        project_id=getattr(args, "project", "default") or "default",
+        output_dir=output_dir,
+    )
+    print(f"📚 Documentation built in {output_dir.absolute()}")
+    return 0
+
+
+def docs_tutorial(args: argparse.Namespace) -> int:
+    """Сгенерировать один tutorial-файл."""
+    _, _, _, builder = _docs_engine_and_builder(args)
+    output_dir = Path(args.output) if args.output else Path("docs")
+    path = builder.build_tutorial(args.correlation_id, output_dir=output_dir)
+    print(f"📖 Tutorial saved to {path.absolute()}")
+    return 0
+
+
+def docs_example(args: argparse.Namespace) -> int:
+    """Сгенерировать example-директорию."""
+    _, _, _, builder = _docs_engine_and_builder(args)
+    output_dir = Path(args.output) if args.output else Path("docs/examples")
+    path = builder.generator.save_example(
+        args.correlation_id,
+        args.name,
+        output_dir,
+    )
+    print(f"📂 Example saved to {path.absolute()}")
+    return 0
+
+
+def docs_serve(args: argparse.Namespace) -> int:
+    """Запустить локальный сервер для docs/."""
+    import subprocess
+
+    docs_dir = Path(args.dir) if args.dir else Path("docs")
+    if not docs_dir.exists():
+        print(f"❌ Directory not found: {docs_dir.absolute()}")
+        return 1
+    print(f"🌐 Serving docs at http://localhost:{args.port}")
+    print("   Press Ctrl+C to stop")
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "http.server", str(args.port)],
+            cwd=docs_dir,
+            check=True,
+        )
+    except KeyboardInterrupt:
+        print("\n👋 Server stopped")
+    except FileNotFoundError:
+        print("❌ Could not start http.server")
+        return 1
+    return 0
 
 
 def init_project(args: argparse.Namespace) -> int:
@@ -301,6 +376,100 @@ def graph_state(args: argparse.Namespace) -> int:
     return 0
 
 
+def chronicler_journal(args: argparse.Namespace) -> int:
+    """Показать последние шаги из ProcessJournal."""
+    from voyage_framework.chronicler.journal import ProcessJournal
+    from voyage_framework.core.event_engine import EventEngine
+
+    engine = EventEngine()
+    journal = ProcessJournal(
+        engine,
+        project_id=args.project or "default",
+        correlation_id=args.correlation_id,
+    )
+    steps = journal.get_steps(
+        correlation_id=args.correlation_id,
+        step_type=args.step_type,
+        limit=args.limit,
+    )
+
+    if not steps:
+        print("📝 No steps found")
+        return 0
+
+    print(f"📝 Steps (limit={args.limit}):")
+    for event in steps:
+        payload = event.payload
+        print(
+            f"   {payload.get('step_type', 'unknown'):10} | {payload.get('description', '')[:60]}"
+        )
+    return 0
+
+
+def chronicler_replay(args: argparse.Namespace) -> int:
+    """Сгенерировать replay-скрипт для correlation_id."""
+    from voyage_framework.chronicler.journal import ProcessJournal
+    from voyage_framework.chronicler.replay import ReplayGenerator
+    from voyage_framework.core.event_engine import EventEngine
+
+    engine = EventEngine()
+    journal = ProcessJournal(
+        engine,
+        project_id=args.project or "default",
+        correlation_id=args.correlation_id,
+    )
+    generator = ReplayGenerator(journal)
+    path = generator.save_script(args.correlation_id, path=args.output)
+    print(f"🎬 Replay script saved to {path.absolute()}")
+    return 0
+
+
+def chronicler_decisions(args: argparse.Namespace) -> int:
+    """Показать decision log."""
+    from voyage_framework.chronicler.decision_log import DecisionLog
+    from voyage_framework.core.event_engine import EventEngine
+
+    engine = EventEngine()
+    decision_log = DecisionLog(engine)
+    decisions = decision_log.get_decisions(project_id=args.project or "default")
+
+    if not decisions:
+        print("🧠 No decisions recorded")
+        return 0
+
+    print(f"🧠 Decisions ({len(decisions)}):")
+    for event in decisions:
+        payload = event.payload
+        print(f"   {payload.get('context', '')}: {payload.get('chosen', '')}")
+        print(f"      {payload.get('rationale', '')[:80]}")
+    return 0
+
+
+def chronicler_tutorial(args: argparse.Namespace) -> int:
+    """Сгенерировать tutorial draft для correlation_id."""
+    from voyage_framework.chronicler.journal import ProcessJournal
+    from voyage_framework.chronicler.tutorial_generator import TutorialDraft
+    from voyage_framework.core.event_engine import EventEngine
+
+    engine = EventEngine()
+    journal = ProcessJournal(
+        engine,
+        project_id=args.project or "default",
+        correlation_id=args.correlation_id,
+    )
+    draft = TutorialDraft(journal)
+    tutorial = draft.generate_draft(args.correlation_id)
+
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(tutorial, encoding="utf-8")
+        print(f"📚 Tutorial draft saved to {output_path.absolute()}")
+    else:
+        print(tutorial)
+    return 0
+
+
 def _dispatch_graph(args: argparse.Namespace) -> int:
     """Диспетчер подкоманд graph."""
     if not args.graph_command:
@@ -312,6 +481,38 @@ def _dispatch_graph(args: argparse.Namespace) -> int:
         return asyncio.run(graph_run(args))
     if args.graph_command == "state":
         return graph_state(args)
+    return 1
+
+
+def _dispatch_chronicler(args: argparse.Namespace) -> int:
+    """Диспетчер подкоманд chronicler."""
+    if not args.chronicler_command:
+        print("❌ No chronicler subcommand provided. Use: journal, replay, decisions, tutorial")
+        return 1
+    if args.chronicler_command == "journal":
+        return chronicler_journal(args)
+    if args.chronicler_command == "replay":
+        return chronicler_replay(args)
+    if args.chronicler_command == "decisions":
+        return chronicler_decisions(args)
+    if args.chronicler_command == "tutorial":
+        return chronicler_tutorial(args)
+    return 1
+
+
+def _dispatch_docs(args: argparse.Namespace) -> int:
+    """Диспетчер подкоманд docs."""
+    if not args.docs_command:
+        print("❌ No docs subcommand provided. Use: build, tutorial, example, serve")
+        return 1
+    if args.docs_command == "build":
+        return docs_build(args)
+    if args.docs_command == "tutorial":
+        return docs_tutorial(args)
+    if args.docs_command == "example":
+        return docs_example(args)
+    if args.docs_command == "serve":
+        return docs_serve(args)
     return 1
 
 
@@ -416,6 +617,82 @@ def main() -> int:
     graph_state_parser = graph_subparsers.add_parser("state", help="Show graph state")
     graph_state_parser.add_argument("correlation_id", help="Correlation ID")
 
+    # chronicler
+    chronicler_parser = subparsers.add_parser("chronicler", help="Chronicler commands")
+    chronicler_subparsers = chronicler_parser.add_subparsers(dest="chronicler_command")
+
+    chronicler_journal_parser = chronicler_subparsers.add_parser(
+        "journal", help="Show process journal steps"
+    )
+    chronicler_journal_parser.add_argument("--project", default="default", help="Project ID")
+    chronicler_journal_parser.add_argument("--correlation-id", help="Correlation ID")
+    chronicler_journal_parser.add_argument("--step-type", help="Filter by step type")
+    chronicler_journal_parser.add_argument("--limit", type=int, default=10, help="Limit")
+
+    chronicler_replay_parser = chronicler_subparsers.add_parser(
+        "replay", help="Generate replay script"
+    )
+    chronicler_replay_parser.add_argument("correlation_id", help="Correlation ID")
+    chronicler_replay_parser.add_argument("--project", default="default", help="Project ID")
+    chronicler_replay_parser.add_argument(
+        "--output",
+        help="Output path (default: .voyage/replay_<id>.sh)",
+    )
+
+    chronicler_decisions_parser = chronicler_subparsers.add_parser(
+        "decisions", help="Show decision log"
+    )
+    chronicler_decisions_parser.add_argument("--project", default="default", help="Project ID")
+
+    chronicler_tutorial_parser = chronicler_subparsers.add_parser(
+        "tutorial", help="Generate tutorial draft"
+    )
+    chronicler_tutorial_parser.add_argument("correlation_id", help="Correlation ID")
+    chronicler_tutorial_parser.add_argument("--project", default="default", help="Project ID")
+    chronicler_tutorial_parser.add_argument("--output", help="Output path")
+
+    # docs
+    docs_parser = subparsers.add_parser("docs", help="Documentation commands")
+    docs_subparsers = docs_parser.add_subparsers(dest="docs_command")
+
+    docs_build_parser = docs_subparsers.add_parser("build", help="Build all documentation")
+    docs_build_parser.add_argument("--project", default="default", help="Project ID")
+    docs_build_parser.add_argument("--output", default="docs", help="Output directory")
+
+    docs_tutorial_parser = docs_subparsers.add_parser("tutorial", help="Generate one tutorial file")
+    docs_tutorial_parser.add_argument("correlation_id", help="Correlation ID")
+    docs_tutorial_parser.add_argument("--project", default="default", help="Project ID")
+    docs_tutorial_parser.add_argument(
+        "--output",
+        default="docs",
+        help="Docs root directory",
+    )
+
+    docs_example_parser = docs_subparsers.add_parser("example", help="Generate example directory")
+    docs_example_parser.add_argument("correlation_id", help="Correlation ID")
+    docs_example_parser.add_argument("--name", required=True, help="Example name")
+    docs_example_parser.add_argument("--project", default="default", help="Project ID")
+    docs_example_parser.add_argument(
+        "--output",
+        default="docs/examples",
+        help="Examples output directory",
+    )
+
+    docs_serve_parser = docs_subparsers.add_parser(
+        "serve", help="Serve docs locally with http.server"
+    )
+    docs_serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to serve on",
+    )
+    docs_serve_parser.add_argument(
+        "--dir",
+        default="docs",
+        help="Directory to serve",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -431,6 +708,8 @@ def main() -> int:
         "approve": show_approvals,
         "evaluate": evaluate_project,
         "graph": _dispatch_graph,
+        "chronicler": _dispatch_chronicler,
+        "docs": _dispatch_docs,
     }
 
     command_name: str = args.command

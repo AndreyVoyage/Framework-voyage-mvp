@@ -23,14 +23,18 @@ class TestGoldenDataset:
 
     def test_find_match(self, tmp_path: Path) -> None:
         dataset = GoldenDataset(dataset_path=tmp_path / "golden.jsonl")
-        dataset.add_solution(GoldenSolution(
-            task_pattern="login user",
-            reference_code="def login(): pass",
-        ))
-        dataset.add_solution(GoldenSolution(
-            task_pattern="logout user",
-            reference_code="def logout(): pass",
-        ))
+        dataset.add_solution(
+            GoldenSolution(
+                task_pattern="login user",
+                reference_code="def login(): pass",
+            )
+        )
+        dataset.add_solution(
+            GoldenSolution(
+                task_pattern="logout user",
+                reference_code="def logout(): pass",
+            )
+        )
 
         match = dataset.find_match("how to login", threshold=0.3)
 
@@ -63,9 +67,12 @@ class TestGoldenDataset:
         db = tmp_path / "events.db"
         engine = EventEngine(db_path=db)
         dataset = GoldenDataset(engine=engine, dataset_path=tmp_path / "golden.jsonl")
-        dataset.add_solution(GoldenSolution(
-            task_pattern="login", reference_code="def login(): pass",
-        ))
+        dataset.add_solution(
+            GoldenSolution(
+                task_pattern="login",
+                reference_code="def login(): pass",
+            )
+        )
 
         dataset.find_match("login user", threshold=0.3)
 

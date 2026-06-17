@@ -3,7 +3,6 @@
 End-to-end: EventEngine → TaskGenerator → AgentRuntime → SecureExecutor.
 """
 
-
 import pytest
 
 from voyage_framework.agents.runtime import AgentRuntime
@@ -32,7 +31,11 @@ class TestFullWorkflow:
 
     @pytest.mark.asyncio
     async def test_task_generation_and_execution(
-        self, tmp_engine, tmp_executor, tmp_runtime, tmp_path,
+        self,
+        tmp_engine,
+        tmp_executor,
+        tmp_runtime,
+        tmp_path,
     ) -> None:
         """Полный цикл: генерация задачи → выполнение агентом."""
         # 1. Генерация задачи

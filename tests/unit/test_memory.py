@@ -11,10 +11,12 @@ from voyage_framework.memory.semantic_store import SemanticStore
 class TestSemanticStore:
     def test_add_and_query(self, tmp_path: Path) -> None:
         store = SemanticStore(persist_directory=tmp_path)
-        store.add_documents([
-            MemoryEntry(id="a", text="def authenticate_user(token: str) -> User"),
-            MemoryEntry(id="b", text="def create_order(items: list[Item]) -> Order"),
-        ])
+        store.add_documents(
+            [
+                MemoryEntry(id="a", text="def authenticate_user(token: str) -> User"),
+                MemoryEntry(id="b", text="def create_order(items: list[Item]) -> Order"),
+            ]
+        )
 
         results = store.query("how to login user", top_k=1)
 
@@ -24,10 +26,12 @@ class TestSemanticStore:
 
     def test_count_and_delete(self, tmp_path: Path) -> None:
         store = SemanticStore(persist_directory=tmp_path)
-        store.add_documents([
-            MemoryEntry(id="x", text="hello world"),
-            MemoryEntry(id="y", text="goodbye world"),
-        ])
+        store.add_documents(
+            [
+                MemoryEntry(id="x", text="hello world"),
+                MemoryEntry(id="y", text="goodbye world"),
+            ]
+        )
 
         assert store.count() == 2
 
@@ -38,10 +42,12 @@ class TestSemanticStore:
 
     def test_filter_by_metadata(self, tmp_path: Path) -> None:
         store = SemanticStore(persist_directory=tmp_path)
-        store.add_documents([
-            MemoryEntry(id="f1", text="def foo()", metadata={"file": "auth.py"}),
-            MemoryEntry(id="f2", text="def bar()", metadata={"file": "order.py"}),
-        ])
+        store.add_documents(
+            [
+                MemoryEntry(id="f1", text="def foo()", metadata={"file": "auth.py"}),
+                MemoryEntry(id="f2", text="def bar()", metadata={"file": "order.py"}),
+            ]
+        )
 
         results = store.query("function", filters={"file": "auth.py"})
 
@@ -64,10 +70,12 @@ class TestCodeSearch:
         db = tmp_path / "events.db"
         engine = EventEngine(db_path=db)
         store = SemanticStore()
-        store.add_documents([
-            MemoryEntry(id="a", text="def login(username, password): ..."),
-            MemoryEntry(id="b", text="def logout(): ..."),
-        ])
+        store.add_documents(
+            [
+                MemoryEntry(id="a", text="def login(username, password): ..."),
+                MemoryEntry(id="b", text="def logout(): ..."),
+            ]
+        )
         search = CodeSearch(store, engine=engine)
 
         results = search.query("how to sign in", top_k=1)

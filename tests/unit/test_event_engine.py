@@ -49,16 +49,20 @@ class TestEventEngine:
         db = tmp_path / "events.db"
         engine = EventEngine(db_path=db)
 
-        engine.append(Event(
-            event_type=EventType.RULE_ADDED,
-            payload={"rule_text": "Test rule"},
-            project_id="test-proj",
-        ))
-        engine.append(Event(
-            event_type=EventType.ERROR_LOGGED,
-            payload={"error": "Oops"},
-            project_id="test-proj",
-        ))
+        engine.append(
+            Event(
+                event_type=EventType.RULE_ADDED,
+                payload={"rule_text": "Test rule"},
+                project_id="test-proj",
+            )
+        )
+        engine.append(
+            Event(
+                event_type=EventType.ERROR_LOGGED,
+                payload={"error": "Oops"},
+                project_id="test-proj",
+            )
+        )
 
         ctx = engine.get_project_context("test-proj")
         assert ctx["total_events"] == 2
