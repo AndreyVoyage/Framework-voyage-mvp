@@ -48,6 +48,7 @@ ast = [
     "tree-sitter-python>=0.21",
     "tree-sitter-typescript>=0.21",
 ]
+improvement = []
 all = [
     "voyage-framework[dev,semantic,ast]",
 ]

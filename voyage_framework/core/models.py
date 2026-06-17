@@ -38,6 +38,9 @@ class EventType(StrEnum):
     MEMORY_QUERIED = "memory_queried"
     AST_INDEXED = "ast_indexed"
     AST_PARSED = "ast_parsed"
+    EVALUATION_COMPLETED = "evaluation_completed"
+    RULE_SUGGESTED = "rule_suggested"
+    GOLDEN_MATCH_FOUND = "golden_match_found"
 
 
 class Event(BaseModel):
@@ -227,6 +230,30 @@ class Symbol(BaseModel):
     end_line: int = Field(..., ge=0, description="Конечная строка")
     file: str = Field(..., description="Путь к файлу")
     source: str = Field(default="", description="Исходный текст символа")
+
+
+class EvaluationResult(BaseModel):
+    """Результат оценки качества кода агентом."""
+
+    syntax_valid: bool = Field(default=False, description="Синтаксическая корректность")
+    style_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Оценка стиля (ruff)")
+    type_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Оценка типизации (mypy)")
+    test_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Оценка тестов (pytest)")
+    overall_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Итоговая оценка")
+    details: dict[str, Any] = Field(default_factory=dict, description="Детали проверок")
+
+
+class FeedbackResult(BaseModel):
+    """Результат работы FeedbackLoop."""
+
+    evaluation: EvaluationResult = Field(..., description="Оценка выполнения")
+    suggestions: list[str] = Field(default_factory=list, description="Рекомендации")
+    new_rules: list[RuleSuggestion] = Field(
+        default_factory=list, description="Новые предложенные правила"
+    )
+    golden_match: SearchResult | None = Field(
+        default=None, description="Найденный эталон из GoldenDataset"
+    )
 
 
 class ProjectContext(BaseModel):

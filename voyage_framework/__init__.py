@@ -16,6 +16,13 @@ from voyage_framework.core.models import (
     SecurityPolicy,
     ToolResult,
 )
+from voyage_framework.improvement import (
+    Evaluator,
+    FeedbackLoop,
+    GoldenDataset,
+    GoldenSolution,
+    RuleEngine,
+)
 from voyage_framework.memory import CodeSearch, SemanticStore
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
@@ -33,4 +40,9 @@ __all__ = [
     "CodeSearch",
     "ASTParser",
     "CodeIndexer",
+    "GoldenDataset",
+    "GoldenSolution",
+    "RuleEngine",
+    "Evaluator",
+    "FeedbackLoop",
 ]

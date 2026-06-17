@@ -163,6 +163,34 @@ def show_approvals(args: argparse.Namespace) -> int:
     return 0
 
 
+def evaluate_project(args: argparse.Namespace) -> int:
+    """Показать evaluation summary проекта."""
+    from voyage_framework.core.event_engine import EventEngine
+    from voyage_framework.improvement.evaluator import Evaluator
+    from voyage_framework.improvement.feedback_loop import FeedbackLoop
+    from voyage_framework.improvement.golden_dataset import GoldenDataset
+    from voyage_framework.improvement.rule_engine import RuleEngine
+
+    engine = EventEngine()
+    evaluator = Evaluator(project_root=Path(args.dir))
+    rule_engine = RuleEngine(engine=engine)
+    golden_dataset = GoldenDataset(engine=engine)
+    feedback = FeedbackLoop(engine, evaluator, rule_engine, golden_dataset)
+
+    summary = feedback.get_improvement_summary(project_id=args.project)
+
+    print(f"📊 Improvement summary for project '{args.project}':")
+    print(f"   Evaluations: {summary['evaluations_count']}")
+    print(f"   Rules suggested: {summary['rules_suggested_count']}")
+    print(f"   Golden matches: {summary['golden_matches_count']}")
+    print(f"   Average score: {summary['average_score']:.2f}")
+    print(f"   Last score: {summary['last_score']}")
+    print(f"   Stored rules: {summary['stored_rules_count']}")
+    print(f"   Golden solutions: {summary['golden_solutions_count']}")
+
+    return 0
+
+
 def main() -> int:
     """Точка входа CLI."""
     # Гарантировать UTF-8 для stdout/stderr на Windows
@@ -207,6 +235,11 @@ def main() -> int:
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
+    # evaluate
+    evaluate_parser = subparsers.add_parser("evaluate", help="Show improvement summary")
+    evaluate_parser.add_argument("--dir", default=".", help="Project directory")
+    evaluate_parser.add_argument("--project", default="default", help="Project ID")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -220,6 +253,7 @@ def main() -> int:
         "task": generate_task,
         "events": show_events,
         "approve": show_approvals,
+        "evaluate": evaluate_project,
     }
 
     return commands[args.command](args)

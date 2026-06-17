@@ -17,6 +17,7 @@ from voyage_framework.core.models import (
     NodeResult,
     ToolResult,
 )
+from voyage_framework.improvement.feedback_loop import FeedbackLoop
 from voyage_framework.memory.code_search import CodeSearch
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.security.sandbox import SecureExecutor
@@ -35,11 +36,13 @@ class AgentRuntime:
         executor: SecureExecutor,
         policy: PolicyEnforcer,
         code_search: CodeSearch | None = None,
+        feedback_loop: FeedbackLoop | None = None,
     ) -> None:
         self.engine = engine
         self.executor = executor
         self.policy = policy
         self.code_search = code_search
+        self.feedback_loop = feedback_loop
         self._checkpoints: dict[str, AgentState] = {}
 
     async def run(
@@ -50,7 +53,7 @@ class AgentRuntime:
         project_id: str = "default",
         correlation_id: str | None = None,
     ) -> NodeResult:
-        """Запустить агента на выполнение задачи.
+        """Запустить агента на выполнение задачи с возможностью feedback loop.
 
         Args:
             role: Роль агента
@@ -62,12 +65,47 @@ class AgentRuntime:
         Returns:
             NodeResult: результат выполнения
         """
+        retry_count = 0
+        while True:
+            result = await self._run_once(
+                role=role,
+                task=task,
+                plan=plan,
+                project_id=project_id,
+                correlation_id=correlation_id,
+                retry_count=retry_count,
+            )
+
+            if self.feedback_loop:
+                feedback = await self.feedback_loop.process(result, project_id=project_id)
+                result.state.confidence = feedback.evaluation.overall_score
+
+                if (
+                    self.feedback_loop.should_retry(feedback)
+                    and retry_count < result.state.max_retries
+                ):
+                    retry_count += 1
+                    continue
+
+            return result
+
+    async def _run_once(
+        self,
+        role: str,
+        task: str,
+        plan: list[str],
+        project_id: str,
+        correlation_id: str | None,
+        retry_count: int,
+    ) -> NodeResult:
+        """Один проход цикла агента."""
         state = AgentState(
             role=role,
             task=task,
             plan=plan,
             project_id=project_id,
             correlation_id=correlation_id,
+            retry_count=retry_count,
         )
 
         # Поиск релевантного контекста в semantic memory

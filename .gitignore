@@ -35,6 +35,7 @@ htmlcov/
 # Voyage Framework
 .voyage/
 .voyage_approval_pending.json
+.voyage_eval_*.py
 TASK.md
 CONTEXT.json
 
