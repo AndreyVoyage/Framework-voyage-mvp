@@ -118,3 +118,73 @@ class TaskYamlSpec(BaseModel):
         if not value or not value.strip():
             raise ValueError("role must not be empty")
         return value
+
+
+class TaskRecord:
+    """Runtime-запись задачи в SQLite.
+
+    Mutable. Хранит текущее состояние задачи: статус, timestamps и т.д.
+    Создаётся TaskEngine из TaskYamlSpec. Не содержит Pydantic-валидации
+    (валидация уже пройдена на этапе TaskParser → TaskYamlSpec).
+
+    Разделение:
+        TaskYamlSpec = immutable description from task.yaml
+        TaskRecord = mutable runtime state from SQLite
+    """
+
+    def __init__(
+        self,
+        id: str,
+        title: str,
+        description: str,
+        role: str,
+        status: str = "pending",
+        priority: str | None = None,
+        mode: str | None = None,
+        source_path: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
+        archived_at: datetime | None = None,
+        metadata: dict[str, Any] | None = None,
+        acceptance_criteria: list[str] | None = None,
+    ) -> None:
+        self.id = id
+        self.title = title
+        self.description = description
+        self.role = role
+        self.status = status
+        self.priority = priority
+        self.mode = mode
+        self.source_path = source_path
+        self.created_at = created_at or datetime.now(UTC)
+        self.updated_at = updated_at or self.created_at
+        self.started_at = started_at
+        self.completed_at = completed_at
+        self.archived_at = archived_at
+        self.metadata = metadata or {}
+        self.acceptance_criteria = acceptance_criteria or []
+
+    def to_dict(self) -> dict[str, Any]:
+        """Сериализация в dict (для EventEngine payload)."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "role": self.role,
+            "status": self.status,
+            "priority": self.priority,
+            "mode": self.mode,
+            "source_path": self.source_path,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
+            "metadata": self.metadata,
+            "acceptance_criteria": self.acceptance_criteria,
+        }
+
+    def __repr__(self) -> str:
+        return f"<TaskRecord {self.id[:8]} {self.status} '{self.title[:40]}'>"
