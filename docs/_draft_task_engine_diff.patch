@@ -1,0 +1,218 @@
+diff --git a/voyage_framework/cli.py b/voyage_framework/cli.py
+index f095e0b..74ba65a 100644
+--- a/voyage_framework/cli.py
++++ b/voyage_framework/cli.py
+@@ -214,6 +214,111 @@ def generate_task(args: argparse.Namespace) -> int:
+     return 0
+ 
+ 
++def task_create(args: argparse.Namespace) -> int:
++    """Создать новую задачу в Task Engine."""
++    from voyage_framework.core.task_engine import TaskManager
++
++    engine = EventEngine()
++    manager = TaskManager(event_engine=engine)
++    task = manager.create(
++        title=args.title,
++        description=args.description,
++        role=args.role,
++        project_id=args.project or "default",
++        criteria=args.criteria.split(";") if args.criteria else [],
++    )
++    print(f"✅ Task created: {task.task_id}")
++    print(f"   Title:  {task.title}")
++    print(f"   Role:   {task.role}")
++    print(f"   Status: {task.status.value}")
++    return 0
++
++
++def task_list(args: argparse.Namespace) -> int:
++    """Показать список задач."""
++    from voyage_framework.core.task_engine import TaskManager, TaskStatus
++
++    manager = TaskManager()
++    status = TaskStatus(args.status) if args.status else None
++    tasks = manager.list(
++        project_id=args.project,
++        role=args.role,
++        status=status,
++        limit=args.limit,
++    )
++
++    if not tasks:
++        print("📝 No tasks found")
++        return 0
++
++    print(f"📝 Tasks ({len(tasks)}):")
++    print(f"{'ID':10} {'Status':12} {'Role':12} {'Title'}")
++    print("-" * 60)
++    for t in tasks:
++        short_id = t.task_id[:8]
++        print(f"{short_id:10} {t.status.value:12} {t.role:12} {t.title[:40]}")
++    return 0
++
++
++def task_start(args: argparse.Namespace) -> int:
++    """Начать задачу."""
++    from voyage_framework.core.task_engine import TaskManager
++
++    manager = TaskManager()
++    try:
++        task = manager.start(args.task_id)
++        print(f"🚀 Task started: {task.task_id}")
++        print(f"   Status: {task.status.value}")
++    except ValueError as e:
++        print(f"❌ {e}")
++        return 1
++    return 0
++
++
++def task_complete(args: argparse.Namespace) -> int:
++    """Завершить задачу."""
++    from voyage_framework.core.task_engine import TaskManager
++
++    manager = TaskManager()
++    try:
++        task = manager.complete(args.task_id)
++        print(f"✅ Task completed: {task.task_id}")
++        print(f"   Status: {task.status.value}")
++    except ValueError as e:
++        print(f"❌ {e}")
++        return 1
++    return 0
++
++
++def task_show(args: argparse.Namespace) -> int:
++    """Показать детали задачи."""
++    from voyage_framework.core.task_engine import TaskManager
++
++    manager = TaskManager()
++    task = manager.get(args.task_id)
++    if task is None:
++        print(f"❌ Task not found: {args.task_id}")
++        return 1
++
++    print(f"📋 Task {task.task_id}")
++    print(f"   Title:       {task.title}")
++    print(f"   Status:      {task.status.value}")
++    print(f"   Role:        {task.role}")
++    print(f"   Project:     {task.project_id}")
++    print(f"   Created:     {task.created_at}")
++    if task.started_at:
++        print(f"   Started:     {task.started_at}")
++    if task.completed_at:
++        print(f"   Completed:   {task.completed_at}")
++    if task.criteria:
++        print(f"   Criteria:")
++        for c in task.criteria:
++            print(f"      - {c}")
++    if task.description:
++        print(f"   Description: {task.description[:100]}")
++    return 0
++
++
+ def show_events(args: argparse.Namespace) -> int:
+     """Показать события."""
+     engine = EventEngine()
+@@ -516,6 +621,26 @@ def _dispatch_docs(args: argparse.Namespace) -> int:
+     return 1
+ 
+ 
++def _dispatch_task(args: argparse.Namespace) -> int:
++    """Диспетчер подкоманд task."""
++    if not args.task_command:
++        print("❌ No task subcommand provided. Use: create, list, start, complete, show, generate")
++        return 1
++    if args.task_command == "create":
++        return task_create(args)
++    if args.task_command == "list":
++        return task_list(args)
++    if args.task_command == "start":
++        return task_start(args)
++    if args.task_command == "complete":
++        return task_complete(args)
++    if args.task_command == "show":
++        return task_show(args)
++    if args.task_command == "generate":
++        return generate_task(args)
++    return 1
++
++
+ def main() -> int:
+     """Точка входа CLI."""
+     # Гарантировать UTF-8 для stdout/stderr на Windows
+@@ -556,12 +681,43 @@ def main() -> int:
+         help="Docker image when --backend=docker",
+     )
+ 
+-    # task
+-    task_parser = subparsers.add_parser("task", help="Generate TASK.md")
+-    task_parser.add_argument("role", help="Agent role")
+-    task_parser.add_argument("--task", required=True, help="Task description")
+-    task_parser.add_argument("--phase", help="Micro-phase")
+-    task_parser.add_argument("--project", default="default", help="Project ID")
++    # task — subcommands
++    task_parser = subparsers.add_parser("task", help="Task management commands")
++    task_subparsers = task_parser.add_subparsers(dest="task_command")
++
++    # task create
++    task_create_parser = task_subparsers.add_parser("create", help="Create a new task")
++    task_create_parser.add_argument("--title", required=True, help="Task title")
++    task_create_parser.add_argument("--description", default="", help="Task description")
++    task_create_parser.add_argument("--role", required=True, help="Agent role")
++    task_create_parser.add_argument("--project", default="default", help="Project ID")
++    task_create_parser.add_argument("--criteria", default="", help="Acceptance criteria (semicolon-separated)")
++
++    # task list
++    task_list_parser = task_subparsers.add_parser("list", help="List tasks")
++    task_list_parser.add_argument("--project", help="Filter by project ID")
++    task_list_parser.add_argument("--role", help="Filter by role")
++    task_list_parser.add_argument("--status", choices=["pending", "in_progress", "completed", "failed", "cancelled"], help="Filter by status")
++    task_list_parser.add_argument("--limit", type=int, default=20, help="Limit")
++
++    # task start
++    task_start_parser = task_subparsers.add_parser("start", help="Start a task")
++    task_start_parser.add_argument("task_id", help="Task ID")
++
++    # task complete
++    task_complete_parser = task_subparsers.add_parser("complete", help="Complete a task")
++    task_complete_parser.add_argument("task_id", help="Task ID")
++
++    # task show
++    task_show_parser = task_subparsers.add_parser("show", help="Show task details")
++    task_show_parser.add_argument("task_id", help="Task ID")
++
++    # task generate (legacy: generate TASK.md)
++    task_generate_parser = task_subparsers.add_parser("generate", help="Generate TASK.md + CONTEXT.json")
++    task_generate_parser.add_argument("role", help="Agent role")
++    task_generate_parser.add_argument("--task", required=True, help="Task description")
++    task_generate_parser.add_argument("--phase", help="Micro-phase")
++    task_generate_parser.add_argument("--project", default="default", help="Project ID")
+ 
+     # events
+     events_parser = subparsers.add_parser("events", help="Show events")
+@@ -703,7 +859,7 @@ def main() -> int:
+         "init": init_project,
+         "status": show_status,
+         "run": lambda a: asyncio.run(run_agent(a)),
+-        "task": generate_task,
++        "task": _dispatch_task,
+         "events": show_events,
+         "approve": show_approvals,
+         "evaluate": evaluate_project,
+diff --git a/voyage_framework/core/models.py b/voyage_framework/core/models.py
+index e52f2b2..905d5ad 100644
+--- a/voyage_framework/core/models.py
++++ b/voyage_framework/core/models.py
+@@ -30,7 +30,11 @@ class EventType(StrEnum):
+     AGENT_COMPLETED = "agent_completed"
+     AGENT_FAILED = "agent_failed"
+     SESSION_STARTED = "session_started"
++    TASK_CREATED = "task_created"
++    TASK_STARTED = "task_started"
+     TASK_COMPLETED = "task_completed"
++    TASK_FAILED = "task_failed"
++    TASK_CANCELLED = "task_cancelled"
+     RETRY_ATTEMPTED = "retry_attempted"
+     DEAD_LETTER_CREATED = "dead_letter_created"
+     COMPLEXITY_LIMIT_EXCEEDED = "complexity_limit_exceeded"
