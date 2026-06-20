@@ -26,7 +26,7 @@ Agents = Kimi, Codex, Claude, Gemini, DeepSeek — заменяемые испо
 ```text
 task.yaml              ← SOURCE OF TRUTH (читаем)
   ↓
-TaskSpec (Pydantic)    ← runtime model
+TaskYamlSpec (Pydantic) ← immutable YAML model
   ↓
 TaskRecord (SQLite)    ← runtime state
   ↓
@@ -42,18 +42,22 @@ CONTEXT.json           ← GENERATED для агента (структуриро
 2. **`TASK.md` никогда не парсится как source of truth.** Только генерируется.
 3. **EventEngine — append-only audit log.** Не управляет задачами. Не хранит текущий статус. Только фиксирует переходы.
 4. **TaskEngine управляет статусами.** Только он меняет `TaskRecord.status`.
-5. **SQLite sync (не async).** ADR-009: sync SQLAlchemy для CLI.
+5. **SQLite sync (не async).** TaskEngine v4.1 использует `sqlite3` напрямую.
+   SQLAlchemy ORM для таблицы `tasks` не используется. Примечание ADR-009 про sync
+   SQLAlchemy относится к legacy CLI DB usage, а не к TaskEngine v4.1.
 
 ---
 
 ## 3. Модели
 
-### 3.1 TaskSpec
+### 3.1 TaskYamlSpec
 
 Описание задачи из `task.yaml`. Иммутабельный, используется при создании `TaskRecord`.
 
 ```python
-class TaskSpec(BaseModel):
+class TaskYamlSpec(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     id: str                    # Уникальный ID задачи (VF-001)
     title: str                 # Краткое название
     description: str           # Подробное описание
@@ -73,7 +77,7 @@ Runtime-запись в SQLite. Изменяется TaskEngine.
 
 ```python
 class TaskRecord:
-    id: str                    # PK, совпадает с TaskSpec.id
+    id: str                    # PK, совпадает с TaskYamlSpec.id
     title: str
     description: str
     role: str
@@ -90,13 +94,17 @@ class TaskRecord:
 
 ### 3.3 Разделение
 
-| Аспект | TaskSpec | TaskRecord |
+| Аспект | TaskYamlSpec | TaskRecord |
 |---|---|---|
 | Источник | `task.yaml` | SQLite |
 | Изменяется | Нет (immutable) | Да (TaskEngine) |
 | Жизненный цикл | Один раз при создании | На протяжении всей задачи |
 | Статус | Начальный | Текущий |
 | acceptance_criteria | Есть | Не хранится отдельно (только в metadata) |
+
+`TaskYamlSpec` — описание задачи из `task.yaml`. Legacy `TaskSpec` остаётся в
+`core/models.py` для обратной совместимости. Не удалять и не переименовывать legacy-модель
+в v4.1 Phase 1.5.
 
 ---
 
@@ -213,7 +221,7 @@ priority: high
 status: pending
 
 acceptance_criteria:
-  - task.yaml can be parsed into TaskSpec
+  - task.yaml can be parsed into TaskYamlSpec
   - TaskRecord can be created in SQLite
   - Status transitions follow the contract
   - EventEngine logs all lifecycle events
@@ -381,9 +389,9 @@ voyage tasks archive VF-001
 
 ```python
 class TaskParser:
-    """Читает task.yaml и возвращает TaskSpec."""
+    """Читает task.yaml и возвращает TaskYamlSpec."""
 
-    def parse(self, path: Path | str) -> TaskSpec:
+    def parse(self, path: Path | str) -> TaskYamlSpec:
         """Прочитать и валидировать task.yaml.
         
         Raises:
@@ -392,7 +400,7 @@ class TaskParser:
         """
         ...
 
-    def parse_string(self, yaml_content: str) -> TaskSpec:
+    def parse_string(self, yaml_content: str) -> TaskYamlSpec:
         """Парсить task.yaml из строки (для тестов)."""
         ...
 ```
@@ -400,12 +408,13 @@ class TaskParser:
 ### 9.2 Требования
 
 1. **Использовать `pyyaml` для чтения YAML.**
-2. **Валидировать через Pydantic `TaskSpec`.**
+2. **Валидировать через Pydantic `TaskYamlSpec`.**
 3. **Проверять `role` через `PolicyEnforcer`.**
 4. **Проверять `status == "pending"` для новых задач.**
 5. **Не читать `TASK.md` как source of truth.**
 6. **Не генерировать `TASK.md` — это работа TaskGenerator.**
-7. **Писать `task_parsed` событие в EventEngine (если передан).**
+7. **TaskParser MAY писать `task_parsed`, если EventEngine явно передан.** До Phase 4
+   emission события опционален; обязательное event logging начинается в Phase 4.
 
 ---
 
@@ -420,8 +429,8 @@ class TaskEngine:
     def __init__(self, db_path: Path, event_engine: EventEngine | None = None) -> None:
         ...
 
-    def create_from_spec(self, spec: TaskSpec) -> TaskRecord:
-        """Создать TaskRecord из TaskSpec."""
+    def create_from_spec(self, spec: TaskYamlSpec) -> TaskRecord:
+        """Создать TaskRecord из TaskYamlSpec."""
         ...
 
     def get(self, task_id: str) -> TaskRecord | None:
@@ -478,11 +487,12 @@ class TaskEngine:
 ### 11.1 Правила
 
 1. **TaskGenerator не заменяет TaskParser.**
-2. **TaskGenerator принимает `TaskSpec` и генерирует `TASK.md` + `CONTEXT.json`.**
+2. **Legacy TaskGenerator принимает legacy `TaskSpec` и генерирует `TASK.md` +
+   `CONTEXT.json`.** Этот flow сохраняется для обратной совместимости.
 3. **TaskGenerator не управляет статусами.**
 4. **Правильная цепочка:**
    ```text
-   task.yaml → TaskParser → TaskSpec → TaskEngine → TaskRecord
+   task.yaml → TaskParser → TaskYamlSpec → TaskEngine → TaskRecord
                                                 ↓
                                          TaskGenerator → TASK.md + CONTEXT.json
    ```
@@ -498,8 +508,8 @@ Phase 0: Contract Freeze
     ├── Create VOYAGE_V4_1_CONTRACT.md
     └── Approve contract
 
-Phase 1: TaskSpec + TaskParser
-    ├── Define TaskSpec Pydantic model
+Phase 1: TaskYamlSpec + TaskParser
+    ├── Define TaskYamlSpec Pydantic model
     ├── Implement TaskParser
     ├── Write tests
     └── Approve: tests pass
@@ -582,7 +592,8 @@ Phase 7: Modes Draft
 7. **Knowledge > Agents** — агентов можно менять, знания остаются.
 8. **task.yaml = Source of Truth** — не TASK.md, не YAML-файлы.
 9. **EventEngine = Audit Log** — не контроллер, не state machine.
-10. **Sync SQLAlchemy for CLI** — ADR-009, не async в CLI.
+10. **Sync sqlite3 for TaskEngine v4.1** — без async и без SQLAlchemy ORM для `tasks`.
+    ADR-009 про sync SQLAlchemy применяется только к legacy CLI DB usage.
 
 ---
 
@@ -590,6 +601,7 @@ Phase 7: Modes Draft
 
 | Версия | Дата | Автор | Изменения |
 |---|---|---|---|
+| 1.1 | 2026-06-20 | Phase 1.5 | Clarified TaskYamlSpec, sqlite3 usage, task_parsed optional, ID validation, immutable model |
 | 1.0 | 2026-06-20 | Phase 0 | Начальный контракт v4.1 |
 
 ---

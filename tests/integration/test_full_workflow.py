@@ -51,7 +51,7 @@ class TestFullWorkflow:
         result = await tmp_runtime.run(
             role="developer",
             task="Run echo command",
-            plan=["echo hello from voyage"],
+            plan=["python -c print('hello-from-voyage')"],
             project_id="integration-test",
         )
 

@@ -1,5 +1,7 @@
 """Unit tests for SecureExecutor."""
 
+import sys
+
 import pytest
 
 from voyage_framework.core.models import SecurityLevel, SecurityPolicy
@@ -25,8 +27,9 @@ class TestSecureExecutor:
     @pytest.mark.asyncio
     async def test_execute_safe_command(self, tmp_path):
         policy = SecurityPolicy()
+        policy.allowed_commands.add(sys.executable)
         executor = SecureExecutor(policy, project_root=tmp_path)
-        result = await executor.execute(["echo", "hello"])
+        result = await executor.execute([sys.executable, "-c", "print('hello')"])
         assert result.success is True
         assert "hello" in result.stdout
 
@@ -61,9 +64,9 @@ class TestSecureExecutor:
 
 class TestSubprocessBackend:
     @pytest.mark.asyncio
-    async def test_execute_echo(self):
+    async def test_execute_python(self):
         backend = SubprocessBackend()
-        result = await backend.execute(["echo", "test"])
+        result = await backend.execute([sys.executable, "-c", "print('test')"])
         assert result.success is True
         assert "test" in result.stdout
 

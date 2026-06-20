@@ -1,8 +1,8 @@
-"""Task Parser — чтение task.yaml и валидация через TaskSpec.
+"""Task Parser — чтение task.yaml и валидация через TaskYamlSpec.
 
 Интерфейс:
-    TaskParser.parse(path) → TaskSpec
-    TaskParser.parse_string(content) → TaskSpec
+    TaskParser.parse(path) → TaskYamlSpec
+    TaskParser.parse_string(content) → TaskYamlSpec
 
 Валидирует:
 - Обязательные поля (id, title, description, role, acceptance_criteria)
@@ -20,11 +20,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-from voyage_framework.core.task_models import TaskSpec
+from voyage_framework.core.task_models import TaskYamlSpec
 from voyage_framework.security.policy import PolicyEnforcer
 
 
@@ -41,19 +40,19 @@ class RoleValidationError(TaskValidationError):
 
 
 class TaskParser:
-    """Парсер task.yaml → TaskSpec."""
+    """Парсер task.yaml → TaskYamlSpec."""
 
     def __init__(self, policy_enforcer: PolicyEnforcer | None = None) -> None:
         self.policy = policy_enforcer or PolicyEnforcer()
 
-    def parse(self, path: Path | str) -> TaskSpec:
+    def parse(self, path: Path | str) -> TaskYamlSpec:
         """Прочитать и валидировать task.yaml из файла.
 
         Args:
             path: Путь к task.yaml
 
         Returns:
-            TaskSpec — валидированная спецификация задачи
+            TaskYamlSpec — валидированная спецификация задачи
 
         Raises:
             TaskValidationError: если YAML невалиден или обязательные поля отсутствуют.
@@ -71,7 +70,7 @@ class TaskParser:
         self,
         yaml_content: str,
         source_path: str | None = None,
-    ) -> TaskSpec:
+    ) -> TaskYamlSpec:
         """Парсить task.yaml из строки (полезно для тестов).
 
         Args:
@@ -79,7 +78,7 @@ class TaskParser:
             source_path: Опциональный путь к источнику (для ошибок).
 
         Returns:
-            TaskSpec — валидированная спецификация задачи.
+            TaskYamlSpec — валидированная спецификация задачи.
 
         Raises:
             TaskValidationError: если YAML невалиден или обязательные поля отсутствуют.
@@ -91,7 +90,9 @@ class TaskParser:
             raise TaskValidationError(f"Invalid YAML syntax: {e}") from e
 
         if not isinstance(data, dict):
-            raise TaskValidationError("task.yaml must be a YAML mapping (dict), not a list or scalar")
+            raise TaskValidationError(
+                "task.yaml must be a YAML mapping (dict), not a list or scalar"
+            )
 
         # Проверить обязательные поля на уровне dict (до Pydantic)
         required_fields = {"id", "title", "description", "role", "acceptance_criteria"}
@@ -102,15 +103,15 @@ class TaskParser:
         # Проверить, что acceptance_criteria не пустой
         criteria = data.get("acceptance_criteria", [])
         if not criteria or not isinstance(criteria, list) or not all(criteria):
-            raise TaskValidationError("acceptance_criteria must be a non-empty list of non-empty strings")
+            raise TaskValidationError(
+                "acceptance_criteria must be a non-empty list of non-empty strings"
+            )
 
         # Проверить, что status в допустимых значениях, затем что == "pending" для новых задач
         status = data.get("status", "pending")
         allowed_statuses = {"pending", "in_progress", "blocked", "completed", "failed", "archived"}
         if status not in allowed_statuses:
-            raise TaskValidationError(
-                f"status must be one of {allowed_statuses}, got '{status}'"
-            )
+            raise TaskValidationError(f"status must be one of {allowed_statuses}, got '{status}'")
         if status != "pending":
             raise TaskValidationError(
                 f"New tasks must have status='pending', got '{status}'. "
@@ -123,10 +124,7 @@ class TaskParser:
             raise TaskValidationError("role must not be empty")
         if role not in self.policy.policies:
             available = sorted(self.policy.policies.keys())
-            raise RoleValidationError(
-                f"Role '{role}' is not defined. "
-                f"Available roles: {available}"
-            )
+            raise RoleValidationError(f"Role '{role}' is not defined. Available roles: {available}")
 
         # Добавить source_path в metadata для трассировки
         if source_path:
@@ -136,8 +134,8 @@ class TaskParser:
             metadata["source_path"] = source_path
             data["metadata"] = metadata
 
-        # Валидация через Pydantic TaskSpec
+        # Валидация через Pydantic TaskYamlSpec
         try:
-            return TaskSpec(**data)
+            return TaskYamlSpec(**data)
         except ValueError as e:
-            raise TaskValidationError(f"TaskSpec validation failed: {e}") from e
+            raise TaskValidationError(f"TaskYamlSpec validation failed: {e}") from e

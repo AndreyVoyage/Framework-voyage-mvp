@@ -1,4 +1,4 @@
-"""Тесты TaskParser и TaskSpec (Phase 1).
+"""Тесты TaskParser и TaskYamlSpec (Phase 1).
 
 Покрывают:
 - Чтение валидного task.yaml (минимальный и полный)
@@ -18,15 +18,14 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import yaml
+from pydantic import ValidationError
 
-from voyage_framework.core.task_models import TaskFiles, TaskSpec
+from voyage_framework.core.task_models import TaskFiles, TaskYamlSpec
 from voyage_framework.core.task_parser import (
     RoleValidationError,
     TaskParser,
     TaskValidationError,
 )
-
 
 # ───────────────────────────────────────────────────────────────
 # Fixtures
@@ -298,7 +297,10 @@ description: Criteria is empty list
 role: developer
 acceptance_criteria: []
 """
-        with pytest.raises(TaskValidationError, match="acceptance_criteria must be a non-empty list"):
+        with pytest.raises(
+            TaskValidationError,
+            match="acceptance_criteria must be a non-empty list",
+        ):
             parser.parse_string(yaml_content)
 
     def test_list_with_empty_string(self, parser: TaskParser) -> None:
@@ -310,7 +312,10 @@ role: developer
 acceptance_criteria:
   - ""
 """
-        with pytest.raises(TaskValidationError, match="acceptance_criteria must be a non-empty list"):
+        with pytest.raises(
+            TaskValidationError,
+            match="acceptance_criteria must be a non-empty list",
+        ):
             parser.parse_string(yaml_content)
 
 
@@ -496,14 +501,14 @@ class TestFileAndYamlErrors:
 
 
 # ───────────────────────────────────────────────────────────────
-# TaskSpec model validation (direct)
+# TaskYamlSpec model validation (direct)
 # ───────────────────────────────────────────────────────────────
 
-class TestTaskSpecDirectValidation:
-    """Тесты прямой валидации TaskSpec (без TaskParser)."""
+class TestTaskYamlSpecDirectValidation:
+    """Тесты прямой валидации TaskYamlSpec (без TaskParser)."""
 
     def test_valid_task_spec(self) -> None:
-        spec = TaskSpec(
+        spec = TaskYamlSpec(
             id="VF-100",
             title="Direct spec",
             description="Created directly",
@@ -516,7 +521,7 @@ class TestTaskSpecDirectValidation:
 
     def test_empty_title_fails(self) -> None:
         with pytest.raises(ValueError, match="String should have at least 1 character"):
-            TaskSpec(
+            TaskYamlSpec(
                 id="VF-101",
                 title="",
                 description="Empty title",
@@ -526,7 +531,7 @@ class TestTaskSpecDirectValidation:
 
     def test_empty_criteria_fails(self) -> None:
         with pytest.raises(ValueError, match="acceptance_criteria must contain at least one item"):
-            TaskSpec(
+            TaskYamlSpec(
                 id="VF-102",
                 title="No criteria",
                 description="Empty criteria",
@@ -543,3 +548,36 @@ class TestTaskSpecDirectValidation:
         files = TaskFiles()
         assert files.read == []
         assert files.modify == []
+
+    def test_task_yaml_spec_is_frozen(self) -> None:
+        spec = TaskYamlSpec(
+            id="VF-103",
+            title="Frozen spec",
+            description="Cannot be reassigned",
+            role="developer",
+            acceptance_criteria=["Works"],
+        )
+        with pytest.raises(ValidationError, match="Instance is frozen"):
+            spec.title = "Changed"
+
+    @pytest.mark.parametrize("task_id", ["VF-001", "VF-123", "ST-001", "ST-1000"])
+    def test_valid_task_id_formats(self, task_id: str) -> None:
+        spec = TaskYamlSpec(
+            id=task_id,
+            title="Valid ID",
+            description="Valid task identifier",
+            role="developer",
+            acceptance_criteria=["Works"],
+        )
+        assert spec.id == task_id
+
+    @pytest.mark.parametrize("task_id", ["BAD-001", "VF-1", "VF001", "task-001"])
+    def test_invalid_task_id_format_fails(self, task_id: str) -> None:
+        with pytest.raises(ValueError, match="id must match"):
+            TaskYamlSpec(
+                id=task_id,
+                title="Invalid ID",
+                description="Invalid task identifier",
+                role="developer",
+                acceptance_criteria=["Fails"],
+            )

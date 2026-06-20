@@ -1,6 +1,6 @@
 """Task Models — Pydantic models для task.yaml и TaskParser.
 
-TaskSpec — описание задачи из YAML (source of truth).
+TaskYamlSpec — описание задачи из YAML (source of truth).
 TaskFiles — список файлов для чтения/модификации.
 
 Важно: это НЕ runtime-модели. Нет created_at, updated_at и т.д.
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TaskFiles(BaseModel):
@@ -21,7 +21,7 @@ class TaskFiles(BaseModel):
     modify: list[str] = Field(default_factory=list, description="Файлы для изменения")
 
 
-class TaskSpec(BaseModel):
+class TaskYamlSpec(BaseModel):
     """Спецификация задачи из task.yaml — source of truth.
 
     Не содержит runtime-полей (created_at, updated_at и т.д.).
@@ -30,7 +30,12 @@ class TaskSpec(BaseModel):
 
     id: str = Field(..., description="Уникальный ID задачи (VF-001, ST-001)")
     title: str = Field(..., min_length=1, max_length=200, description="Краткое название задачи")
-    description: str = Field(..., min_length=1, max_length=5000, description="Подробное описание задачи")
+    description: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000,
+        description="Подробное описание задачи",
+    )
     role: str = Field(..., description="Роль исполнителя (developer, architect, devops...)")
     mode: str | None = Field(
         default="solution",
@@ -60,6 +65,17 @@ class TaskSpec(BaseModel):
         default_factory=dict,
         description="Дополнительные метаданные",
     )
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id_format(cls, value: str) -> str:
+        import re
+
+        if re.fullmatch(r"(?:VF|ST)-\d{3,}", value) is None:
+            raise ValueError("id must match ^(VF|ST)-\\d{3,}$")
+        return value
 
     @field_validator("acceptance_criteria")
     @classmethod
