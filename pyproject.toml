@@ -87,6 +87,7 @@ warn_unused_configs = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["voyage_framework_v4_mvp", ".test-tmp", ".pytest-tmp"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]

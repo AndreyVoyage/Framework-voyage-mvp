@@ -295,8 +295,7 @@ class TaskEngine:
         if new_status not in self.VALID_TRANSITIONS[old_status]:
             allowed = sorted(self.VALID_TRANSITIONS[old_status])
             raise TaskTransitionError(
-                f"Invalid transition: {old_status} → {new_status}. "
-                f"Allowed: {allowed}"
+                f"Invalid transition: {old_status} → {new_status}. Allowed: {allowed}"
             )
 
         now = self._now()
@@ -331,6 +330,7 @@ class TaskEngine:
             record.archived_at = now
 
         # Определить тип события
+        event_type: EventType | None
         if new_status == "in_progress" and old_status == "blocked":
             event_type = EventType.TASK_UNBLOCKED
         else:
@@ -392,8 +392,12 @@ class TaskEngine:
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
             started_at=datetime.fromisoformat(row["started_at"]) if row.get("started_at") else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row.get("completed_at") else None,
-            archived_at=datetime.fromisoformat(row["archived_at"]) if row.get("archived_at") else None,
+            completed_at=datetime.fromisoformat(row["completed_at"])
+            if row.get("completed_at")
+            else None,
+            archived_at=datetime.fromisoformat(row["archived_at"])
+            if row.get("archived_at")
+            else None,
             metadata=json.loads(row["metadata_json"]),
             acceptance_criteria=json.loads(row["criteria_json"]),
         )

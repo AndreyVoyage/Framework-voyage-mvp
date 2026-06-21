@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,12 +26,12 @@ from voyage_framework.core.task_engine import (
     TaskNotFoundError,
     TaskTransitionError,
 )
-from voyage_framework.core.task_models import TaskRecord, TaskYamlSpec
-
+from voyage_framework.core.task_models import TaskYamlSpec
 
 # ───────────────────────────────────────────────────────────────
 # Fixtures
 # ───────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def sample_spec() -> TaskYamlSpec:
@@ -67,6 +66,7 @@ def engine_with_events(tmp_path: Path) -> TaskEngine:
 # Creation
 # ───────────────────────────────────────────────────────────────
 
+
 class TestCreateFromSpec:
     """Тесты создания TaskRecord из TaskYamlSpec."""
 
@@ -95,13 +95,17 @@ class TestCreateFromSpec:
         assert record.mode == "discover"
         assert record.metadata == {"sprint": 3, "estimated_hours": 8}
 
-    def test_create_sets_created_at(self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec) -> None:
+    def test_create_sets_created_at(
+        self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
         before = datetime.now(UTC)
         record = tmp_engine.create_from_spec(sample_spec)
         after = datetime.now(UTC)
         assert before <= record.created_at <= after
 
-    def test_create_sets_updated_at(self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec) -> None:
+    def test_create_sets_updated_at(
+        self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
         record = tmp_engine.create_from_spec(sample_spec)
         assert record.updated_at == record.created_at
 
@@ -116,12 +120,16 @@ class TestCreateFromSpec:
         record = tmp_engine.create_from_spec(spec)
         assert record.acceptance_criteria == ["C1", "C2", "C3"]
 
-    def test_create_duplicate_raises(self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec) -> None:
+    def test_create_duplicate_raises(
+        self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
         tmp_engine.create_from_spec(sample_spec)
         with pytest.raises(TaskAlreadyExistsError, match="already exists"):
             tmp_engine.create_from_spec(sample_spec)
 
-    def test_create_event_logged(self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec) -> None:
+    def test_create_event_logged(
+        self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
         engine_with_events.create_from_spec(sample_spec)
         events = engine_with_events.event_engine.get_events_by_type(
             EventType.TASK_CREATED,
@@ -134,6 +142,7 @@ class TestCreateFromSpec:
 # ───────────────────────────────────────────────────────────────
 # Get / List
 # ───────────────────────────────────────────────────────────────
+
 
 class TestGetAndList:
     """Тесты получения и списка задач."""
@@ -148,14 +157,26 @@ class TestGetAndList:
         assert tmp_engine.get("nonexistent") is None
 
     def test_list_all(self, tmp_engine: TaskEngine) -> None:
-        tmp_engine.create_from_spec(TaskYamlSpec(id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]))
-        tmp_engine.create_from_spec(TaskYamlSpec(id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"]))
+        tmp_engine.create_from_spec(
+            TaskYamlSpec(
+                id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]
+            )
+        )
+        tmp_engine.create_from_spec(
+            TaskYamlSpec(
+                id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"]
+            )
+        )
         tasks = tmp_engine.list()
         assert len(tasks) == 2
 
     def test_list_by_status(self, tmp_engine: TaskEngine) -> None:
-        s1 = TaskYamlSpec(id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"])
-        s2 = TaskYamlSpec(id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"])
+        s1 = TaskYamlSpec(
+            id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]
+        )
+        s2 = TaskYamlSpec(
+            id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"]
+        )
         tmp_engine.create_from_spec(s1)
         tmp_engine.create_from_spec(s2)
         tmp_engine.start("VF-002")
@@ -164,21 +185,41 @@ class TestGetAndList:
         assert tasks[0].id == "VF-002"
 
     def test_list_by_role(self, tmp_engine: TaskEngine) -> None:
-        tmp_engine.create_from_spec(TaskYamlSpec(id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]))
-        tmp_engine.create_from_spec(TaskYamlSpec(id="VF-002", title="B", description="D", role="devops", acceptance_criteria=["X"]))
+        tmp_engine.create_from_spec(
+            TaskYamlSpec(
+                id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]
+            )
+        )
+        tmp_engine.create_from_spec(
+            TaskYamlSpec(
+                id="VF-002", title="B", description="D", role="devops", acceptance_criteria=["X"]
+            )
+        )
         tasks = tmp_engine.list(role="devops")
         assert len(tasks) == 1
         assert tasks[0].id == "VF-002"
 
     def test_list_limit(self, tmp_engine: TaskEngine) -> None:
         for i in range(5):
-            tmp_engine.create_from_spec(TaskYamlSpec(id=f"VF-{i:03d}", title=f"T{i}", description="D", role="developer", acceptance_criteria=["X"]))
+            tmp_engine.create_from_spec(
+                TaskYamlSpec(
+                    id=f"VF-{i:03d}",
+                    title=f"T{i}",
+                    description="D",
+                    role="developer",
+                    acceptance_criteria=["X"],
+                )
+            )
         tasks = tmp_engine.list(limit=2)
         assert len(tasks) == 2
 
     def test_list_ordered_by_updated_desc(self, tmp_engine: TaskEngine) -> None:
-        s1 = TaskYamlSpec(id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"])
-        s2 = TaskYamlSpec(id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"])
+        s1 = TaskYamlSpec(
+            id="VF-001", title="A", description="D", role="developer", acceptance_criteria=["X"]
+        )
+        s2 = TaskYamlSpec(
+            id="VF-002", title="B", description="D", role="developer", acceptance_criteria=["X"]
+        )
         tmp_engine.create_from_spec(s1)
         tmp_engine.create_from_spec(s2)
         tmp_engine.start("VF-001")  # обновит updated_at
@@ -197,6 +238,7 @@ class TestGetAndList:
 # ───────────────────────────────────────────────────────────────
 # Valid transitions
 # ───────────────────────────────────────────────────────────────
+
 
 class TestValidTransitions:
     """Тесты разрешённых переходов."""
@@ -279,6 +321,7 @@ class TestValidTransitions:
 # Invalid transitions
 # ───────────────────────────────────────────────────────────────
 
+
 class TestInvalidTransitions:
     """Тесты запрещённых переходов."""
 
@@ -332,6 +375,7 @@ class TestInvalidTransitions:
 # Timestamp rules
 # ───────────────────────────────────────────────────────────────
 
+
 class TestTimestampRules:
     """Тесты правил timestamps."""
 
@@ -379,6 +423,7 @@ class TestTimestampRules:
 # JSON roundtrip
 # ───────────────────────────────────────────────────────────────
 
+
 class TestJsonRoundtrip:
     """Тесты сериализации/десериализации JSON-полей."""
 
@@ -412,11 +457,14 @@ class TestJsonRoundtrip:
 # EventEngine integration
 # ───────────────────────────────────────────────────────────────
 
+
 class TestEventLogging:
     """Тесты логирования событий в EventEngine."""
 
     @pytest.fixture
-    def engine_with_task(self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec) -> TaskEngine:
+    def engine_with_task(
+        self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> TaskEngine:
         engine_with_events.create_from_spec(sample_spec)
         return engine_with_events
 
@@ -476,8 +524,12 @@ class TestEventLogging:
         events = self._events_for_task(engine_with_task, EventType.TASK_STARTED)
         assert events[0].payload["actor"] == "codex"
 
-    def test_source_path_in_event_payload(self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec) -> None:
-        spec = sample_spec.model_copy(update={"metadata": {"source_path": "/tasks/VF-001/task.yaml"}})
+    def test_source_path_in_event_payload(
+        self, engine_with_events: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
+        spec = sample_spec.model_copy(
+            update={"metadata": {"source_path": "/tasks/VF-001/task.yaml"}}
+        )
         engine_with_events.create_from_spec(spec)
         events = self._events_for_task(engine_with_events, EventType.TASK_CREATED)
         assert events[0].payload["source_path"] == "/tasks/VF-001/task.yaml"
@@ -487,19 +539,27 @@ class TestEventLogging:
 # Windows safety / Resource management
 # ───────────────────────────────────────────────────────────────
 
+
 class TestResourceManagement:
     """Тесты освобождения ресурсов на Windows."""
 
     def test_close_releases_sqlite_file(self, tmp_path: Path) -> None:
         db = tmp_path / "tasks.db"
         engine = TaskEngine(db_path=db)
-        engine.create_from_spec(TaskYamlSpec(
-            id="VF-001", title="CM", description="Close test", role="developer", acceptance_criteria=["OK"]
-        ))
+        engine.create_from_spec(
+            TaskYamlSpec(
+                id="VF-001",
+                title="CM",
+                description="Close test",
+                role="developer",
+                acceptance_criteria=["OK"],
+            )
+        )
         engine.close()
         # Дать Windows время освободить файловый дескриптор
         import gc
         import time
+
         gc.collect()
         time.sleep(0.2)
         # Файл должен быть доступен для удаления
@@ -510,18 +570,27 @@ class TestResourceManagement:
     def test_context_manager_releases(self, tmp_path: Path) -> None:
         db = tmp_path / "tasks.db"
         with TaskEngine(db_path=db) as engine:
-            engine.create_from_spec(TaskYamlSpec(
-                id="VF-001", title="CM", description="Context manager test", role="developer", acceptance_criteria=["OK"]
-            ))
+            engine.create_from_spec(
+                TaskYamlSpec(
+                    id="VF-001",
+                    title="CM",
+                    description="Context manager test",
+                    role="developer",
+                    acceptance_criteria=["OK"],
+                )
+            )
         import gc
         import time
+
         gc.collect()
         time.sleep(0.2)
         assert db.exists()
         db.unlink()
         assert not db.exists()
 
-    def test_no_event_engine_does_not_fail(self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec) -> None:
+    def test_no_event_engine_does_not_fail(
+        self, tmp_engine: TaskEngine, sample_spec: TaskYamlSpec
+    ) -> None:
         # TaskEngine без EventEngine не должен падать
         record = tmp_engine.create_from_spec(sample_spec)
         tmp_engine.start(record.id)

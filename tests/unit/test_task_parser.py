@@ -31,6 +31,7 @@ from voyage_framework.core.task_parser import (
 # Fixtures
 # ───────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def parser() -> TaskParser:
     """TaskParser с default PolicyEnforcer."""
@@ -86,6 +87,7 @@ metadata:
 # ───────────────────────────────────────────────────────────────
 # Success cases
 # ───────────────────────────────────────────────────────────────
+
 
 class TestParseValidMinimal:
     """Тесты парсинга минимального валидного task.yaml."""
@@ -228,6 +230,7 @@ acceptance_criteria:
 # Failure cases — missing required fields
 # ───────────────────────────────────────────────────────────────
 
+
 class TestMissingRequiredFields:
     """Тесты отсутствия обязательных полей."""
 
@@ -323,6 +326,7 @@ acceptance_criteria:
 # Failure cases — invalid role
 # ───────────────────────────────────────────────────────────────
 
+
 class TestInvalidRole:
     """Тесты невалидной роли."""
 
@@ -382,6 +386,7 @@ acceptance_criteria:
 # ───────────────────────────────────────────────────────────────
 # Failure cases — invalid status
 # ───────────────────────────────────────────────────────────────
+
 
 class TestInvalidStatus:
     """Тесты невалидного статуса для новых задач."""
@@ -443,6 +448,7 @@ acceptance_criteria:
 # Failure cases — invalid priority/mode
 # ───────────────────────────────────────────────────────────────
 
+
 class TestInvalidPriorityMode:
     """Тесты невалидных priority и mode."""
 
@@ -477,6 +483,7 @@ acceptance_criteria:
 # Failure cases — file/YAML errors
 # ───────────────────────────────────────────────────────────────
 
+
 class TestFileAndYamlErrors:
     """Тесты ошибок файловой системы и YAML."""
 
@@ -503,6 +510,7 @@ class TestFileAndYamlErrors:
 # ───────────────────────────────────────────────────────────────
 # TaskYamlSpec model validation (direct)
 # ───────────────────────────────────────────────────────────────
+
 
 class TestTaskYamlSpecDirectValidation:
     """Тесты прямой валидации TaskYamlSpec (без TaskParser)."""

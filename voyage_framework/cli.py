@@ -23,6 +23,13 @@ from voyage_framework.chronicler.docs_builder import DocsBuilder
 from voyage_framework.chronicler.journal import ProcessJournal
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.models import SecurityPolicy
+from voyage_framework.core.task_engine import (
+    TaskAlreadyExistsError,
+    TaskEngine,
+    TaskNotFoundError,
+    TaskTransitionError,
+)
+from voyage_framework.core.task_parser import TaskParser, TaskValidationError
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
@@ -516,6 +523,206 @@ def _dispatch_docs(args: argparse.Namespace) -> int:
     return 1
 
 
+def _get_tasks_db_path(args: argparse.Namespace) -> Path:
+    """Получить путь к runtime БД задач."""
+    return Path(getattr(args, "tasks_db", ".voyage/tasks.db"))
+
+
+def _build_task_engine(args: argparse.Namespace) -> TaskEngine:
+    """Создать TaskEngine для обычного CLI-вызова."""
+    return TaskEngine(db_path=_get_tasks_db_path(args))
+
+
+def _dispatch_tasks(
+    args: argparse.Namespace,
+    engine: TaskEngine | None = None,
+) -> int:
+    """Диспетчер подкоманд tasks (plural, runtime task management)."""
+    command = getattr(args, "tasks_command", None)
+    if not command:
+        print(
+            "❌ No tasks subcommand provided. "
+            "Use: create, list, show, start, block, unblock, complete, fail, archive"
+        )
+        return 1
+
+    owns_engine = engine is None
+    task_engine = engine or _build_task_engine(args)
+    try:
+        handlers: dict[str, Callable[[argparse.Namespace, TaskEngine], int]] = {
+            "create": _tasks_create,
+            "list": _tasks_list,
+            "show": _tasks_show,
+            "start": _tasks_start,
+            "block": _tasks_block,
+            "unblock": _tasks_unblock,
+            "complete": _tasks_complete,
+            "fail": _tasks_fail,
+            "archive": _tasks_archive,
+        }
+        handler = handlers.get(command)
+        return handler(args, task_engine) if handler is not None else 1
+    finally:
+        if owns_engine:
+            task_engine.close()
+
+
+def _tasks_create(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Создать задачу из task.yaml."""
+    parser = TaskParser()
+    try:
+        spec = parser.parse(args.file)
+    except (TaskValidationError, FileNotFoundError) as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+    try:
+        record = engine.create_from_spec(spec)
+    except TaskAlreadyExistsError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+    print(f"✅ Created task {record.id}: {record.title}")
+    print(f"   Role: {record.role}")
+    print(f"   Status: {record.status}")
+    return 0
+
+
+def _tasks_list(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Показать список задач."""
+    records = engine.list(
+        status=args.status,
+        role=args.role,
+        limit=args.limit or 20,
+    )
+
+    if not records:
+        print("📝 No tasks found")
+        return 0
+
+    print(f"📝 Tasks ({len(records)}):")
+    print(f"{'ID':12} {'Status':12} {'Role':12} {'Title'}")
+    print("-" * 60)
+    for r in records:
+        short_id = r.id[:10]
+        print(f"{short_id:12} {r.status:12} {r.role:12} {r.title[:40]}")
+    return 0
+
+
+def _tasks_show(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Показать детали задачи."""
+    record = engine.get(args.task_id)
+    if record is None:
+        print(f"❌ Error: task {args.task_id} not found")
+        return 1
+
+    print(f"📋 Task {record.id}")
+    print(f"   Title:       {record.title}")
+    print(f"   Status:      {record.status}")
+    print(f"   Role:        {record.role}")
+    print(f"   Priority:    {record.priority or '—'}")
+    print(f"   Mode:        {record.mode or '—'}")
+    print(f"   Created:     {record.created_at}")
+    if record.started_at:
+        print(f"   Started:     {record.started_at}")
+    if record.completed_at:
+        print(f"   Completed:   {record.completed_at}")
+    if record.archived_at:
+        print(f"   Archived:    {record.archived_at}")
+    print("   Criteria:")
+    for c in record.acceptance_criteria:
+        print(f"      - {c}")
+    if record.description:
+        print(f"   Description: {record.description[:100]}")
+    return 0
+
+
+def _tasks_start(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Начать задачу."""
+    try:
+        record = engine.start(args.task_id)
+        print(f"🚀 Started task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _tasks_block(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Заблокировать задачу."""
+    reason = args.reason or "No reason provided"
+    try:
+        record = engine.block(args.task_id, reason=reason)
+        print(f"⏸️  Blocked task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _tasks_unblock(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Разблокировать задачу."""
+    try:
+        record = engine.unblock(args.task_id)
+        print(f"▶️  Unblocked task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _tasks_complete(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Завершить задачу."""
+    try:
+        record = engine.complete(args.task_id)
+        print(f"✅ Completed task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _tasks_fail(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Отметить задачу как failed."""
+    reason = args.reason or "No reason provided"
+    try:
+        record = engine.fail(args.task_id, reason=reason)
+        print(f"❌ Failed task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _tasks_archive(args: argparse.Namespace, engine: TaskEngine) -> int:
+    """Архивировать задачу."""
+    try:
+        record = engine.archive(args.task_id)
+        print(f"📦 Archived task {record.id} → {record.status}")
+        return 0
+    except TaskNotFoundError as e:
+        print(f"❌ Error: {e}")
+        return 1
+    except TaskTransitionError as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
 def main() -> int:
     """Точка входа CLI."""
     # Гарантировать UTF-8 для stdout/stderr на Windows
@@ -556,12 +763,51 @@ def main() -> int:
         help="Docker image when --backend=docker",
     )
 
-    # task
+    # task (singular — generate TASK.md)
     task_parser = subparsers.add_parser("task", help="Generate TASK.md")
     task_parser.add_argument("role", help="Agent role")
     task_parser.add_argument("--task", required=True, help="Task description")
     task_parser.add_argument("--phase", help="Micro-phase")
     task_parser.add_argument("--project", default="default", help="Project ID")
+
+    # tasks (plural — runtime task management)
+    tasks_parser = subparsers.add_parser("tasks", help="Task runtime management commands")
+    tasks_subparsers = tasks_parser.add_subparsers(dest="tasks_command")
+
+    tasks_create_parser = tasks_subparsers.add_parser("create", help="Create task from task.yaml")
+    tasks_create_parser.add_argument("--file", required=True, help="Path to task.yaml")
+
+    tasks_list_parser = tasks_subparsers.add_parser("list", help="List tasks")
+    tasks_list_parser.add_argument("--role", help="Filter by role")
+    tasks_list_parser.add_argument(
+        "--status",
+        choices=["pending", "in_progress", "blocked", "completed", "failed", "archived"],
+        help="Filter by status",
+    )
+    tasks_list_parser.add_argument("--limit", type=int, default=20, help="Limit")
+
+    tasks_show_parser = tasks_subparsers.add_parser("show", help="Show task details")
+    tasks_show_parser.add_argument("task_id", help="Task ID")
+
+    tasks_start_parser = tasks_subparsers.add_parser("start", help="Start task")
+    tasks_start_parser.add_argument("task_id", help="Task ID")
+
+    tasks_block_parser = tasks_subparsers.add_parser("block", help="Block task")
+    tasks_block_parser.add_argument("task_id", help="Task ID")
+    tasks_block_parser.add_argument("--reason", default="", help="Block reason")
+
+    tasks_unblock_parser = tasks_subparsers.add_parser("unblock", help="Unblock task")
+    tasks_unblock_parser.add_argument("task_id", help="Task ID")
+
+    tasks_complete_parser = tasks_subparsers.add_parser("complete", help="Complete task")
+    tasks_complete_parser.add_argument("task_id", help="Task ID")
+
+    tasks_fail_parser = tasks_subparsers.add_parser("fail", help="Fail task")
+    tasks_fail_parser.add_argument("task_id", help="Task ID")
+    tasks_fail_parser.add_argument("--reason", default="", help="Fail reason")
+
+    tasks_archive_parser = tasks_subparsers.add_parser("archive", help="Archive task")
+    tasks_archive_parser.add_argument("task_id", help="Task ID")
 
     # events
     events_parser = subparsers.add_parser("events", help="Show events")
@@ -704,6 +950,7 @@ def main() -> int:
         "status": show_status,
         "run": lambda a: asyncio.run(run_agent(a)),
         "task": generate_task,
+        "tasks": _dispatch_tasks,
         "events": show_events,
         "approve": show_approvals,
         "evaluate": evaluate_project,
