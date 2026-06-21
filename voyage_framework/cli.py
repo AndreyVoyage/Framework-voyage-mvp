@@ -16,6 +16,7 @@ import asyncio
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from voyage_framework.agents.runtime import AgentRuntime
 from voyage_framework.chronicler.decision_log import DecisionLog
@@ -33,6 +34,9 @@ from voyage_framework.core.task_parser import TaskParser, TaskValidationError
 from voyage_framework.security.policy import PolicyEnforcer
 from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
+
+if TYPE_CHECKING:
+    from voyage_framework.core.context_builder import ContextBuilder
 
 
 def _docs_engine_and_builder(
@@ -723,6 +727,141 @@ def _tasks_archive(args: argparse.Namespace, engine: TaskEngine) -> int:
         return 1
 
 
+# ───────────────────────────────────────────────────────────────
+# Sync commands (Phase 4: Context Builder Lite)
+# ───────────────────────────────────────────────────────────────
+
+
+def _sync_build(
+    args: argparse.Namespace,
+    builder: ContextBuilder | None = None,
+) -> int:
+    """Build project context (voyage sync build)."""
+    from voyage_framework.core.context_builder import ContextBuilder
+
+    try:
+        if builder is None:
+            task_engine = _build_task_engine(args)
+            builder = ContextBuilder(task_engine)
+
+        files = [Path(f) for f in (args.files or [])]
+        output_path = Path(args.output)
+
+        context = builder.build(
+            files,
+            project_id=getattr(args, "project", "default") or "default",
+        )
+        builder.write_context(context, output_path)
+
+        print(f"✅ Context built: {len(context.tasks)} tasks")
+        print(f"📄 Written to {output_path.absolute()}")
+        return 0
+    except Exception as e:
+        print(f"❌ Error building context: {e}")
+        return 1
+
+
+def _sync_check(
+    args: argparse.Namespace,
+    builder: ContextBuilder | None = None,
+) -> int:
+    """Check diffs between YAML and runtime (voyage sync check)."""
+    from voyage_framework.core.context_builder import ContextBuilder
+
+    try:
+        if builder is None:
+            task_engine = _build_task_engine(args)
+            builder = ContextBuilder(task_engine)
+
+        files = [Path(f) for f in (args.files or [])]
+        diffs = builder.check(files)
+
+        if not diffs:
+            print("✅ No diffs found")
+            return 0
+
+        for diff in diffs:
+            if not diff.changed_fields:
+                print(f"✅ {diff.task_id}: in sync")
+            else:
+                print(f"⚠️  {diff.task_id}: {len(diff.changed_fields)} field(s) changed")
+                for field, changes in diff.changed_fields.items():
+                    yaml_val = changes.get("yaml")
+                    runtime_val = changes.get("runtime")
+                    print(f"   {field}: {yaml_val} → {runtime_val}")
+
+            if not diff.exists_in_runtime:
+                print(f"   ⚠️  No runtime record for {diff.task_id}")
+
+        return 0
+    except Exception as e:
+        print(f"❌ Error checking diffs: {e}")
+        return 1
+
+
+def _sync_status(
+    args: argparse.Namespace,
+    engine: TaskEngine | None = None,
+) -> int:
+    """Show runtime task status (voyage sync status).
+
+    Reads TaskEngine runtime database, not task.yaml files.
+    """
+    try:
+        if engine is None:
+            engine = _build_task_engine(args)
+
+        records = engine.list(limit=1000)
+        total = len(records)
+
+        if not records:
+            print("✅ No runtime tasks found (empty project)")
+            return 0
+
+        # Count by status
+        by_status: dict[str, int] = {}
+        for r in records:
+            by_status[r.status] = by_status.get(r.status, 0) + 1
+
+        print("📊 Sync Status")
+        print(f"   Total runtime tasks: {total}")
+        print("   By status:")
+        for status, count in sorted(by_status.items()):
+            print(f"      {status}: {count}")
+
+        # Latest updated task
+        latest = max(records, key=lambda r: r.updated_at)
+        print(f"   Latest updated: {latest.id} ({latest.title[:40]}) → {latest.status}")
+        return 0
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def _dispatch_sync(
+    args: argparse.Namespace,
+    builder: ContextBuilder | None = None,
+    engine: TaskEngine | None = None,
+) -> int:
+    """Dispatcher for sync subcommands."""
+    command = getattr(args, "sync_command", None)
+    if not command:
+        print("❌ No sync subcommand provided. Use: build, check, status")
+        return 1
+
+    if command == "build":
+        return _sync_build(args, builder=builder)
+    elif command == "check":
+        return _sync_check(args, builder=builder)
+    elif command == "status":
+        if engine is None:
+            engine = _build_task_engine(args)
+        return _sync_status(args, engine=engine)
+    else:
+        print(f"❌ Unknown sync command: {command}")
+        return 1
+
+
 def main() -> int:
     """Точка входа CLI."""
     # Гарантировать UTF-8 для stdout/stderr на Windows
@@ -813,6 +952,47 @@ def main() -> int:
     events_parser = subparsers.add_parser("events", help="Show events")
     events_parser.add_argument("--project", default="default", help="Project ID")
     events_parser.add_argument("--limit", type=int, default=20, help="Limit")
+
+    # sync (Phase 4 Context Builder Lite)
+    sync_parser = subparsers.add_parser("sync", help="Context sync commands (Phase 4)")
+    sync_subparsers = sync_parser.add_subparsers(dest="sync_command")
+
+    sync_build_parser = sync_subparsers.add_parser("build", help="Build project context")
+    sync_build_parser.add_argument(
+        "--file",
+        action="append",
+        dest="files",
+        required=True,
+        help="Task YAML file (can be specified multiple times)",
+    )
+    sync_build_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output CONTEXT.json path",
+    )
+    sync_build_parser.add_argument(
+        "--project",
+        default="default",
+        help="Project ID",
+    )
+
+    sync_check_parser = sync_subparsers.add_parser(
+        "check", help="Check diffs between YAML and runtime"
+    )
+    sync_check_parser.add_argument(
+        "--file",
+        action="append",
+        dest="files",
+        required=True,
+        help="Task YAML file (can be specified multiple times)",
+    )
+
+    sync_status_parser = sync_subparsers.add_parser("status", help="Show sync status")
+    sync_status_parser.add_argument(
+        "--project",
+        default="default",
+        help="Project ID",
+    )
 
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
@@ -952,6 +1132,7 @@ def main() -> int:
         "task": generate_task,
         "tasks": _dispatch_tasks,
         "events": show_events,
+        "sync": _dispatch_sync,
         "approve": show_approvals,
         "evaluate": evaluate_project,
         "graph": _dispatch_graph,

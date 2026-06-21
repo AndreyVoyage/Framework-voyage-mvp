@@ -1,5 +1,6 @@
 """Core компоненты Voyage Framework — сердце системы."""
 
+from .context_builder import ContextBuilder
 from .event_engine import EventEngine
 from .models import (
     AgentState,
@@ -21,6 +22,7 @@ __all__ = [
     "ApprovalRequest",
     "ProjectContext",
     "EventEngine",
+    "ContextBuilder",
     "atomic_write",
     "append_entry",
     "parse_frontmatter_entries",
