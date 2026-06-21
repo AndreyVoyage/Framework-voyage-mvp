@@ -18,6 +18,19 @@ from .models import (
     SecurityPolicy,
     ToolResult,
 )
+from .prompt_generator import (
+    PromptGenerationError,
+    PromptGenerator,
+    PromptPackage,
+    default_prompt_generator,
+)
+from .prompt_modes import (
+    DuplicateModeError,
+    ModeProfile,
+    ModeRegistry,
+    PromptModeNotFoundError,
+    default_mode_registry,
+)
 from .storage import append_entry, atomic_write, journal_rotate, parse_frontmatter_entries
 
 __all__ = [
@@ -26,6 +39,15 @@ __all__ = [
     "RoleCapability",
     "RoleBoundary",
     "default_agent_registry",
+    "ModeProfile",
+    "ModeRegistry",
+    "PromptModeNotFoundError",
+    "DuplicateModeError",
+    "default_mode_registry",
+    "PromptPackage",
+    "PromptGenerator",
+    "PromptGenerationError",
+    "default_prompt_generator",
     "Event",
     "AgentState",
     "ToolResult",
