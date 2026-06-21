@@ -1,5 +1,12 @@
 """Core компоненты Voyage Framework — сердце системы."""
 
+from .agent_registry import (
+    AgentRegistry,
+    RoleBoundary,
+    RoleCapability,
+    RoleProfile,
+    default_agent_registry,
+)
 from .context_builder import ContextBuilder
 from .event_engine import EventEngine
 from .models import (
@@ -14,6 +21,11 @@ from .models import (
 from .storage import append_entry, atomic_write, journal_rotate, parse_frontmatter_entries
 
 __all__ = [
+    "AgentRegistry",
+    "RoleProfile",
+    "RoleCapability",
+    "RoleBoundary",
+    "default_agent_registry",
     "Event",
     "AgentState",
     "ToolResult",
