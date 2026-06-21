@@ -54,7 +54,7 @@ class TestMemoryWorkflow:
         result = await tmp_runtime.run(
             role="developer",
             task="how to authenticate user",
-            plan=["echo ok"],
+            plan=["python -c print('ok')"],
             project_id="mem-test",
         )
 

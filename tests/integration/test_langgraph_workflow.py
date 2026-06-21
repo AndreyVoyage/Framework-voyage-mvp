@@ -22,7 +22,7 @@ class TestLangGraphWorkflow:
         result = await runtime.run(
             role="developer",
             task="hello",
-            plan=["echo hello"],
+            plan=["python -c print('hello')"],
             project_id="langgraph-test",
             correlation_id="corr-e2e",
         )
@@ -46,7 +46,7 @@ class TestLangGraphWorkflow:
         await runtime.run(
             role="developer",
             task="checkpoint test",
-            plan=["echo checkpoint"],
+            plan=["python -c print('checkpoint')"],
             project_id="langgraph-test",
             correlation_id=correlation_id,
         )
