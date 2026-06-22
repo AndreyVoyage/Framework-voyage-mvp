@@ -1,0 +1,30 @@
+{
+  "project_id": "default",
+  "tasks": [
+    {
+      "id": "VF-11001",
+      "title": "Add User Authentication to the API",
+      "role": "developer",
+      "spec_status": "pending",
+      "runtime_status": "in_progress",
+      "priority": "high",
+      "mode": "implement",
+      "acceptance_criteria": [
+        "POST /auth/login returns a JWT for valid demo credentials",
+        "POST /auth/register creates a user with a bcrypt-hashed password",
+        "GET /api/protected returns 401 without a valid token",
+        "Tokens expire after 24 hours",
+        "Passwords use bcrypt with cost factor 12",
+        "Authentication endpoints are limited to 5 requests per minute"
+      ],
+      "has_runtime_record": true,
+      "source_path": "docs/examples/e2e-demo/task.yaml"
+    }
+  ],
+  "events_summary": {
+    "total_events": 2,
+    "task_events": 2,
+    "latest_event_at": "2026-06-21T14:05:00Z"
+  },
+  "last_sync": "2026-06-21T14:10:00Z"
+}
