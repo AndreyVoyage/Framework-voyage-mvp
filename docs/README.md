@@ -1,266 +1,131 @@
-# Voyage AI Dev Framework v4.0
+# Voyage Framework
 
 [![CI](https://github.com/AndreyVoyage/Framework-voyage-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/AndreyVoyage/Framework-voyage-mvp/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/AndreyVoyage/Framework-voyage-mvp/main/coverage.json)](https://github.com/AndreyVoyage/Framework-voyage-mvp)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/AndreyVoyage/Framework-voyage-mvp/blob/main/LICENSE)
 
-> AI-Native Engineering Operating System для solo-разработчика.
+Voyage Framework is a local Project Knowledge OS / Development Memory System for structured development workflows, task memory, context packaging, audit logs, and external AI tool handoff.
 
-**Статус:** Phase 4 + Chronicler — LangGraph Integration & Process Documentation (MVP runnable)  
-**Версия:** 4.0.0  
-**Python:** >= 3.11
+External AI tools may receive deterministic prompt packages through a manual handoff. Voyage does not call models or providers and does not execute agents.
 
 ---
 
-## 🚀 Быстрый старт
+## Project identity
+
+The canonical architecture is defined by the [v4.1 MVP contract](VOYAGE_V4_1_CONTRACT.md). The v4.2 milestone adds an interface-only adapter contract for future external-tool integrations. References to v4.3 describe the current documentation direction, not a published release, tag, or runtime layer.
+
+**Voyage is:**
+
+- a local Project Knowledge OS and Development Memory System;
+- a structured workflow around canonical `task.yaml` specifications;
+- a local runtime record for task lifecycle state;
+- an append-only audit trail;
+- a deterministic context and prompt-packaging layer for manual external AI tool handoff.
+
+**Voyage is not:**
+
+- an AI Agent Framework or autonomous agent runtime;
+- a runtime orchestration framework;
+- a LangGraph, CrewAI, or AutoGen replacement;
+- an automatic agent execution system;
+- a model/provider execution layer;
+- a hosted production deployment platform.
+
+---
+
+## Source of truth
+
+```text
+task.yaml      -> canonical task specification (TaskYamlSpec / TaskParser)
+TaskRecord     -> canonical runtime task state (SQLite / TaskEngine)
+EventEngine    -> append-only audit log
+
+AgentRegistry   -> read-only role catalog
+ModeRegistry    -> read-only mode catalog
+ContextBuilder  -> context aggregation and comparison
+PromptGenerator -> deterministic prompt package generation
+
+TASK.md and CONTEXT.json -> generated artifacts, not canonical truth
+```
+
+Generated artifacts must not be parsed back as the authoritative project state.
+
+---
+
+## Canonical core
+
+- **TaskParser** validates canonical `task.yaml` input.
+- **TaskEngine** manages local `TaskRecord` lifecycle state in SQLite.
+- **EventEngine** records append-only audit events; it is not a state controller.
+- **ContextBuilder** assembles and compares development context.
+- **AgentRegistry** and **ModeRegistry** expose deterministic read-only catalogs; they do not launch agents or activate modes.
+- **PromptGenerator** produces deterministic prompt packages for external tools; it does not send or execute them.
+- **Adapter contracts** define interfaces only. No provider client, network transport, credential storage, or adapter runtime is included.
+
+---
+
+## Installation and safe quickstart
+
+Voyage requires Python 3.11 or newer.
 
 ```bash
-# 1. Установка
-pip install -e .
-
-# 2. Инициализация проекта
-voyage init
-
-# 3. Генерация задачи
-voyage task developer --task "Implement user authentication" --phase M1
-
-# 4. Запуск агента
-voyage run developer --task "Implement auth" --plan "echo starting;echo done"
-
-# 5. Проверка статуса
-voyage status
+pip install -e ".[dev]"
+voyage --help
 ```
 
----
-
-## 📁 Структура
-
-```
-voyage_framework/
-├── core/
-│   ├── models.py          # Pydantic: Event, AgentState, ToolResult, SecurityPolicy...
-│   ├── event_engine.py    # Event Store: SQLite + JSONL backup
-│   └── storage.py         # Atomic writes, frontmatter, journal rotation
-├── security/
-│   ├── sandbox.py         # SecureExecutor: 5 уровней защиты
-│   ├── policy.py          # RolePolicy + PolicyEnforcer
-│   ├── audit.py           # AuditLogger
-│   └── approval.py        # ApprovalQueue (human approval flow)
-├── specs/
-│   ├── task_generator.py  # Генератор TASK.md + CONTEXT.json
-│   └── tracker.py         # AcceptanceTracker
-├── agents/
-│   └── runtime.py         # AgentRuntime: Plan → Execute → Reflect → Retry
-├── cli.py                 # CLI: voyage init | run | task | status | events | approve
-└── __init__.py
-
-tests/
-├── unit/                  # 50+ unit tests
-└── integration/           # End-to-end workflow tests
-```
-
----
-
-## 🏗 Архитектура
-
-### Core Components (Phase 1)
-
-| Компонент | Файл | Статус |
-|-----------|------|--------|
-| Event Store | `core/event_engine.py` | ✅ Работает |
-| Security Sandbox | `security/sandbox.py` | ✅ 5 уровней |
-| Task Generator | `specs/task_generator.py` | ✅ Генерирует TASK.md |
-| Agent Runtime | `agents/runtime.py` | ✅ Plan→Execute→Reflect→Retry |
-| Role Policies | `security/policy.py` | ✅ 6 ролей |
-| Audit Log | `security/audit.py` | ✅ JSONL |
-| Approval Flow | `security/approval.py` | ✅ .voyage_approval_pending.json |
-
-### Future Phases
-
-- **Phase 2:** Semantic Memory (ChromaDB), AST Manager, Tool Adapters
-- **Phase 3:** Self-Improving Engine, Golden Datasets, CI Pipeline
-- **Phase 4:** LangGraph Integration, Visualizer API
-
----
-
-## 🛡 Безопасность
-
-### 5 уровней защиты SecureExecutor
-
-1. **L1 — Dangerous Patterns:** regex блокировка (`rm -rf /`, `eval()`, `curl | sh`)
-2. **L2 — Whitelist:** только разрешённые команды (`git`, `pytest`, `python`, ...)
-3. **L3 — Path Traversal:** запрет выхода за `project_root`
-4. **L4 — Network Guard:** блокировка сетевых операций (если `allow_network=False`)
-5. **L5 — Dangerous Tier:** `systemctl`, `ssh`, `rm` → требует human approval
-
-### Approval Flow
-
-```python
-# Dangerous команда блокируется
-result = await executor.execute(["systemctl", "restart", "nginx"])
-# result.blocked = True
-# result.approval_required = True
-
-# Создать запрос на approval
-req = executor.create_approval_request(["systemctl", "restart", "nginx"], agent_id="a1", role="devops")
-# Сохранить в .voyage_approval_pending.json
-```
-
----
-
-## 🧪 Тесты
+Create a canonical `task.yaml`, then use the task and context workflows:
 
 ```bash
-# Все тесты
-pytest
+voyage tasks create --file task.yaml
+voyage tasks list
+voyage sync build --file task.yaml --output CONTEXT.json
+voyage sync check --file task.yaml
+```
 
-# Только unit
-pytest -m unit
+`CONTEXT.json` is a generated artifact. Review it and any generated prompt package before manually handing it to an external AI tool. Results return through the normal review and Git workflow; Voyage does not execute the external tool or automatically merge its output.
 
-# С coverage
-pytest --cov=voyage_framework --cov-report=html
+The singular legacy command `voyage task` generates `TASK.md` and `CONTEXT.json`; it does not replace canonical `task.yaml` or the `voyage tasks` runtime-state namespace.
 
-# Линтеры
+---
+
+## Legacy compatibility surfaces
+
+The repository retains historical v4.0 runtime and graph compatibility modules (for example, `voyage_framework/agents/` and `voyage_framework/langgraph_tools/`). Some of these surfaces may remain importable, tested, or reachable through older CLI commands.
+
+These historical surfaces are **not the canonical v4.1/v4.2 core** and must not be interpreted as Voyage's current identity or as a promise of runtime orchestration, model execution, or autonomous behavior. Their disposition is documented in the [Phase 12 legacy cleanup audit](reports/VOYAGE_PHASE_12_LEGACY_CLEANUP_AUDIT.md) and the [Phase 13 controlled cleanup plan](reports/VOYAGE_PHASE_13_CONTROLLED_CLEANUP_PLAN.md) and will be addressed through separately approved phases.
+
+---
+
+## Documentation
+
+- [Architecture contract](VOYAGE_V4_1_CONTRACT.md)
+- [Agent operating guide](../AGENTS.md)
+- [User guide](guides/USER_GUIDE.md)
+- [Installation](guides/INSTALLATION.md)
+- [Quickstart](guides/QUICKSTART.md)
+- [End-to-end workflow](guides/END_TO_END_WORKFLOW.md)
+- [Adapter contract usage](guides/ADAPTER_CONTRACT_USAGE.md)
+- [Phase 12 legacy cleanup audit](reports/VOYAGE_PHASE_12_LEGACY_CLEANUP_AUDIT.md)
+- [Phase 13 controlled cleanup plan](reports/VOYAGE_PHASE_13_CONTROLLED_CLEANUP_PLAN.md)
+- [Phase 15 v4.3 release readiness audit](reports/VOYAGE_PHASE_15_V4_3_RELEASE_READINESS_AUDIT.md)
+- [Phase 16 documentation identity fix plan](reports/VOYAGE_PHASE_16_DOCUMENTATION_IDENTITY_FIX_PLAN.md)
+
+---
+
+## Development checks
+
+Run checks from the repository root:
+
+```bash
+pytest tests/
+ruff check voyage_framework tests
+ruff format --check voyage_framework tests
 mypy voyage_framework
-ruff check voyage_framework
-ruff format voyage_framework
+git diff --check
 ```
 
 ---
 
-## 📊 CLI
+## License
 
-```bash
-voyage init              # Инициализировать проект
-voyage status            # Статус (events count, last events)
-voyage run <role>        # Запустить агента
-  --task "..."           # Описание задачи
-  --plan "step1;step2"   # План выполнения
-  --project my-project   # ID проекта
-  --backend docker       # Использовать Docker backend (default: subprocess)
-  --docker-image python:3.11-slim  # Образ для Docker backend
-voyage task <role>       # Сгенерировать TASK.md + CONTEXT.json
-  --task "..."           # Обязательно
-  --phase M1             # Микро-фаза
-  --project my-project   # ID проекта
-voyage events            # Показать события
-  --limit 50             # Лимит
-  --project my-project   # Фильтр по проекту
-voyage approve           # Показать pending approval запросы
-voyage chronicler journal              # Последние шаги процесса
-voyage chronicler replay <id>          # Bash-скрипт для воспроизведения
-voyage chronicler decisions            # Decision log
-voyage chronicler tutorial <id>        # Черновик tutorial
-```
-
----
-
-## 🐳 Docker backend
-
-`SecureExecutor` поддерживает запуск команд в изолированном Docker-контейнере:
-
-```bash
-voyage run developer \
-  --backend docker \
-  --docker-image python:3.11-slim \
-  --task "Check python version" \
-  --plan "python --version"
-```
-
-Что происходит:
-- Текущая директория монтируется в `/workspace` контейнера (`--volume=<project_root>:/workspace`).
-- Контейнер запускается с `--rm`, `--network=none` и текущим пользователем (Linux/macOS).
-- Команды выполняются внутри образа, что изолирует хост-систему от side-эффектов.
-
-Требования: установленный Docker (Docker Desktop на Windows).
-
-----
-
-## 📝 Пример TASK.md (генерируется автоматически)
-
-```markdown
-# TASK: Implement user authentication
-
-## Context
-**Project:** default
-**Events:** 0 total
-**Role:** developer
-**Phase:** Phase 1 | Micro-Phase: M1
-
-## Relevant Files
-- Определи самостоятельно
-
-## Acceptance Criteria
-- [ ] Код реализует: Implement user authentication
-- [ ] mypy проходит без ошибок
-- [ ] pytest проходит без ошибок
-- [ ] ruff check проходит без ошибок
-
-## Rules (from RULES.md)
-- Все async функции должны иметь type hints
-- Используй async_sessionmaker и AsyncSession для async SQLAlchemy
-- Не используй eval(), exec(), compile() с user input
-- Все секреты через pydantic-settings + .env файл
-- Каждая новая функция >10 строк обязана иметь >=1 тест
-
-## ADR References
-- [ADR-001](ADR/ADR-001.md)
-
-## Instructions
-1. Напиши код согласно критериям.
-2. Запусти mypy и pytest перед финализацией.
-3. Не меняй файлы вне указанных relevant_files.
-
----
-Generated by Voyage Framework v4.0
-```
-
----
-
-## 🚀 Phase 4 — LangGraph Integration
-
-Voyage Framework теперь поддерживает графовые workflow:
-
-- `LangGraphRuntime` — второй runtime на базе `VoyageGraphBuilder`.
-- Conditional edges: ветвление по `evaluation_score`, `retry_count`, `should_retry`.
-- Parallel validation node: параллельный lint + test.
-- Checkpointing в `EventEngine` (`NODE_STARTED`, `NODE_COMPLETED`, `EDGE_TAKEN`).
-- Визуализация в Mermaid/Graphviz.
-- Pure-Python fallback `simple_graph.py` если `langgraph` недоступен.
-
-```bash
-voyage graph visualize
-voyage graph run developer --task "Implement auth" --plan "echo start;echo done"
-```
-
-----
-
-## 🧠 Chronicler — автоматическая документация процесса
-
-Chronicler записывает каждый шаг разработки в `EventEngine`:
-
-- `ProcessJournal` — шаги `plan`, `code`, `test`, `commit`, `review`, `deploy`, `audit`, `fix`.
-- `ReplayGenerator` — bash-скрипт для воспроизведения процесса.
-- `DecisionLog` — "почему так решили" + черновики обновлений ADR.
-- `TutorialDraft` — черновик tutorial из реальных шагов.
-
-```bash
-voyage chronicler journal
-voyage chronicler replay my-correlation-id
-voyage chronicler decisions
-voyage chronicler tutorial my-correlation-id
-```
-
-----
-
-## 🔗 Связь с репозиторием документации
-
-Документация и архитектурные решения:
-- [Framework-voyage-v2](https://github.com/AndreyVoyage/Framework-voyage-v2) — ADR, ROLE, TECH, TEST_STRATEGY
-
----
-
-## 📜 Лицензия
-
-MIT License — AndreyVoyage
+MIT.
