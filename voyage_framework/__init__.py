@@ -1,12 +1,17 @@
-"""Voyage AI Dev Framework v4.0 — AI-Native Engineering Operating System.
+"""Voyage Framework — a local Project Knowledge OS / Development Memory System.
 
-Фреймворк для solo-разработчика, который делегирует рутину AI,
-но контролирует критичные моменты через governance layer.
+Voyage Framework provides structured development workflows, task memory,
+context packaging, audit logs, and external AI tool handoff for solo developers
+and small teams. It is not an AI Agent Framework, autonomous runtime,
+orchestration framework, or replacement for LangGraph/CrewAI/AutoGen.
 """
 
 __version__ = "4.0.0"
 __author__ = "AndreyVoyage"
 
+# Legacy / deprecated / non-canonical compatibility exports.
+# These names are preserved only for backward compatibility with earlier v4.0
+# code. They are not part of the canonical Project Knowledge OS core API.
 from voyage_framework.agents.langgraph_runtime import LangGraphRuntime
 from voyage_framework.ast_tools import ASTParser, CodeIndexer
 from voyage_framework.chronicler import (
@@ -38,6 +43,7 @@ from voyage_framework.security.sandbox import SecureExecutor
 from voyage_framework.specs.task_generator import TaskGenerator
 
 __all__ = [
+    # Canonical core surfaces
     "Event",
     "AgentState",
     "ToolResult",
@@ -55,13 +61,14 @@ __all__ = [
     "RuleEngine",
     "Evaluator",
     "FeedbackLoop",
-    "VoyageGraphBuilder",
-    "LangGraphRuntime",
-    "MermaidExporter",
     "ProcessJournal",
     "ReplayGenerator",
     "DecisionLog",
     "TutorialDraft",
     "TutorialGenerator",
     "DocsBuilder",
+    # Legacy / deprecated / non-canonical compatibility surfaces
+    "VoyageGraphBuilder",
+    "MermaidExporter",
+    "LangGraphRuntime",
 ]
