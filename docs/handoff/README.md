@@ -16,6 +16,7 @@ At the end of long audit/implementation/merge tasks, the agent should:
 2. Write the next recommended action to `docs/handoff/NEXT_ACTION.md`.
 3. Keep terminal output short.
 4. Never store secrets, tokens, auth URLs, API keys, or personal data in handoff files.
+5. Write generated handoff files as UTF-8.
 
 ## Copy latest report to clipboard
 
@@ -32,6 +33,14 @@ Then paste into ChatGPT with `Ctrl+V`.
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\copy_report_to_clipboard.ps1 -Path docs\reports\REPORT_NAME.md
 ```
+
+## Encoding
+
+All handoff files must be written as UTF-8.
+
+Claude Code / Kimi Code agents should write generated reports using UTF-8 and avoid legacy Windows encodings.
+
+The clipboard scripts read files explicitly as UTF-8 to prevent mojibake in Russian text, for example `Ð¸`, `Ñ‡`, `âœ…`.
 
 ## Safety
 
