@@ -10,7 +10,9 @@ if (!(Test-Path -LiteralPath $Path)) {
     exit 1
 }
 
-$content = Get-Content -LiteralPath $Path -Raw
+$resolvedPath = (Resolve-Path -LiteralPath $Path).Path
+$utf8 = New-Object System.Text.UTF8Encoding($false, $true)
+$content = [System.IO.File]::ReadAllText($resolvedPath, $utf8)
 
 if ([string]::IsNullOrWhiteSpace($content)) {
     Write-Error "File is empty: $Path"
