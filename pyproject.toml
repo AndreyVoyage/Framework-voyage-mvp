@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "voyage-framework"
 version = "4.0.0"
-description = "AI-Native Engineering Operating System — Voyage Framework v4.0"
+description = "Local Project Knowledge OS and Development Memory System for task memory, context packaging, audit logs, and external AI tool handoff"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "AndreyVoyage", email = "andrey@example.com"}
 ]
-keywords = ["ai", "agents", "framework", "development", "automation"]
+keywords = ["project-knowledge", "development-memory", "task-management", "context-packaging", "audit-log"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
