@@ -6,7 +6,7 @@ and small teams. It is not an AI Agent Framework, autonomous runtime,
 orchestration framework, or replacement for LangGraph/CrewAI/AutoGen.
 """
 
-__version__ = "4.0.0"
+__version__ = "4.3.0"
 __author__ = "AndreyVoyage"
 
 # Legacy / deprecated / non-canonical compatibility exports.
