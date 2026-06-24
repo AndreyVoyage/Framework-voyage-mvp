@@ -6,6 +6,7 @@
 - Objective: verify all Phase 27–30 requirements are met and authorize (or block) v4.3.0 tag creation for Phase 32.
 - Creates only: `docs/reports/VOYAGE_PHASE_31_FINAL_RELEASE_READINESS_REAUDIT.md` (this file).
 - Does not create tags, run workflows, edit source/workflow/version files, or publish to PyPI.
+- **Retry note**: First attempt (`723d0c9`) returned verdict C — BLOCKER: `release` environment had `protection_rules: []`. User configured Required Reviewers manually. This retry confirms the fix and issues authorization.
 
 ## Inputs
 
@@ -21,9 +22,9 @@
 ## Current repository state
 
 - Branch: `docs/phase-31-final-release-readiness-reaudit-prompt`
-- HEAD: `7950ec1` (docs: add Phase 31 final release readiness re-audit prompt)
+- HEAD: `723d0c9` (docs: add Phase 31 final release readiness re-audit report — first attempt, verdict C)
 - origin/main: `66352ab74e8a590ec5c1dd946b1ae3a4947f3d57` (Merge Phase 30 successful dry-run evidence)
-- Working tree: clean (no tracked changes before report creation)
+- Working tree: clean (no tracked changes before report update)
 
 ## Phase history verification
 
@@ -71,30 +72,43 @@ All 10 dry-run evidence requirements confirmed. — **SAFE**
 
 ## GitHub environment protection
 
-- Environment exists: yes (`id: 17141902974`, `name: "release"`, `created_at: 2026-06-24T05:33:25Z`)
-- Required reviewers configured: **NO** — `gh api repos/AndreyVoyage/Framework-voyage-mvp/environments/release` returned `"protection_rules": []`
+- Environment exists: yes (`id: 17141902974`, `name: "release"`, `updated_at: 2026-06-24T08:52:02Z`)
+- Required reviewers configured: **YES** — `gh api repos/AndreyVoyage/Framework-voyage-mvp/environments/release` returned non-empty `protection_rules` with `required_reviewers` type
 - Evidence:
   ```json
   {
     "id": 17141902974,
     "name": "release",
-    "protection_rules": [],
+    "can_admins_bypass": false,
+    "protection_rules": [
+      {
+        "id": 58209656,
+        "type": "required_reviewers",
+        "prevent_self_review": false,
+        "reviewers": [
+          {
+            "type": "User",
+            "reviewer": {
+              "login": "AndreyVoyage"
+            }
+          }
+        ]
+      }
+    ],
     "deployment_branch_policy": null
   }
   ```
-- Classification: **BLOCKER**
+- Classification: **SAFE**
 
-The `release` environment was created automatically when the `environment: release` key was added to `release.yml`. However, no Required Reviewers or other protection rules have been configured via GitHub Settings → Environments → `release`. The job ran without any approval gate in both Phase 30 runs.
+All SAFE criteria confirmed:
+- environment name: `release` ✓
+- `can_admins_bypass`: `false` ✓ (admins cannot bypass the approval gate)
+- `protection_rules`: non-empty (1 rule) ✓
+- rule type: `required_reviewers` ✓
+- reviewer login: `AndreyVoyage` ✓
+- `prevent_self_review`: `false` ✓
 
-Per authorization policy: if Required Reviewers are not configured → BLOCKER → v4.3.0 tag NOT authorized.
-
-**Manual action required before Phase 32:**
-1. Go to: GitHub → AndreyVoyage/Framework-voyage-mvp → Settings → Environments → `release`
-2. Add Required reviewers: `AndreyVoyage`
-3. Save protection rules
-4. Verify: `gh api repos/AndreyVoyage/Framework-voyage-mvp/environments/release` → `protection_rules` must contain a reviewer entry
-
-After configuring protection, re-run Phase 31 (or proceed to Phase 32 with a documented bypass if policy allows).
+The tag-triggered release job will require manual approval from `AndreyVoyage` before proceeding. This is the correct gate before GitHub Release and potential PyPI publish.
 
 ## Tag readiness
 
@@ -120,14 +134,14 @@ After configuring protection, re-run Phase 31 (or proceed to Phase 32 with a doc
 
 ## Remaining blockers
 
-1. **GitHub Environment `release` Required Reviewers not configured** — **BLOCKER**: `protection_rules: []` confirmed via `gh api`. The `release` environment exists but has no approval gate. The release job runs without human approval. Per authorization policy, this blocks v4.3.0 tag authorization. Must configure Required Reviewers before Phase 32 can proceed.
+None. All 17 authorization criteria pass. — **SAFE**
 
 ## Authorization decision
 
-- v4.3.0 tag authorized: **no**
-- Reason: One BLOCKER prevents authorization — GitHub Environment `release` protection rules are not configured (`protection_rules: []`). All other 16 authorization criteria pass (version, workflow safety, dry-run evidence, tags, hygiene). The single blocker is the absence of Required Reviewers for the `release` deployment environment.
+- v4.3.0 tag authorized: **yes**
+- Reason: All 17 authorization criteria pass. Environment `release` now has Required Reviewers configured (`AndreyVoyage`, `can_admins_bypass: false`). All technical requirements (version, workflow safety, CI evidence, tags, hygiene) were already confirmed in the first attempt.
 
-Items that PASS (16/17):
+Items that PASS (17/17):
 1. `version = "4.3.0"` in `pyproject.toml` ✓
 2. `__version__ = "4.3.0"` in `voyage_framework/__init__.py` ✓
 3. `workflow_dispatch` present ✓
@@ -144,35 +158,44 @@ Items that PASS (16/17):
 14. No local `v4.3*` tag ✓
 15. No remote `v4.3*` tag ✓
 16. No forbidden repo changes ✓
-
-Item that FAILS (1/17):
-17. GitHub Environment `release` Required Reviewers configured ✗ — `protection_rules: []`
+17. GitHub Environment `release` Required Reviewers configured ✓ — `AndreyVoyage`, `can_admins_bypass: false`
 
 ## Phase 32 instructions if authorized
 
-Not applicable — tag not authorized. See Phase 32 forbidden actions below.
+v4.3.0 tag is authorized. Phase 32 may proceed as follows:
+
+1. Create new branch `release/v4.3.0` from `main` (currently `66352ab`).
+2. Create annotated tag `v4.3.0` on `main` HEAD:
+   ```bash
+   git tag -a v4.3.0 -m "Release v4.3.0"
+   ```
+3. Push tag:
+   ```bash
+   git push origin v4.3.0
+   ```
+4. The GitHub Actions `Release` workflow triggers on `push` to `refs/tags/v*`.
+5. The `environment: release` gate will pause the job and require approval from `AndreyVoyage` before proceeding.
+6. After approval, the job will run: install, test (416 expected), build, then create GitHub Release.
+7. PyPI publish remains commented out — no PyPI publish will occur.
+8. Monitor the run; confirm `Create GitHub Release` step succeeds.
+
+**Tag format:** `v4.3.0` (annotated, three-component SemVer — consistent with `v4.1.0-mvp` and `v4.2.0-adapter-contract`).
 
 ## Phase 32 forbidden actions if not authorized
 
-- Do NOT create `v4.3.0` tag
-- Do NOT create `v4.3` tag
-- Do NOT run `git tag`
-- Do NOT push tags
-- Do NOT run `gh release create`
-- Do NOT run `gh workflow run release.yml` with tag push intent
-- Do NOT publish to PyPI
-
-Required before Phase 32 can proceed:
-1. Configure GitHub Settings → Environments → `release` → Required reviewers → Add `AndreyVoyage` → Save
-2. Verify via `gh api repos/AndreyVoyage/Framework-voyage-mvp/environments/release` → `protection_rules` must be non-empty
-3. Re-run Phase 31 (or document explicit bypass policy signed by user) to obtain tag authorization
+Not applicable — tag is authorized. However, the following remain forbidden even in Phase 32 unless explicitly part of the Phase 32 plan:
+- Do NOT publish to PyPI (step is commented out)
+- Do NOT force-push tags
+- Do NOT delete or move existing `v4.1.0-mvp` or `v4.2.0-adapter-contract` tags
 
 ## Risks / deviations
 
-- **Single blocker, well-defined fix**: the only blocker (environment protection) has a clear manual resolution. All technical requirements (version, workflow, CI evidence) are fully satisfied. Once protection rules are configured, Phase 32 can proceed immediately without any code changes.
-- **Phase 30 dry-run ran without environment approval**: both Phase 30 runs (`28077532312` and `28080683596`) started without an approval wait, confirming the environment had no protection rules at dispatch time. This is expected — protection rules should be configured before the actual tag-triggered release, not before dry-run. The dry-run itself is safe regardless.
+- **Phase 30 dry-run ran without environment approval**: both Phase 30 runs (`28077532312` and `28080683596`) started without an approval wait — the environment had no protection rules at dispatch time. This is expected and acceptable — dry-runs are safe regardless of approval gate. The actual tag-triggered release job will now correctly require `AndreyVoyage` approval before proceeding.
+- **`prevent_self_review: false`**: the reviewer (`AndreyVoyage`) is also the repository owner who pushed the tag. `prevent_self_review: false` means the tag pusher can approve their own deployment. This is an intentional single-owner project configuration — not a concern for this project.
+- **No in-workflow twine check** (carry-over WARNING): non-blocking. Local Phase 29 twine check passed; CI build succeeded.
+- **Node.js 20 deprecation** (carry-over WARNING): non-blocking. `actions/checkout@v4` and `actions/setup-python@v5` should be bumped to @v5 in a future maintenance phase.
 - **No deviations from prompt specification.** All checks ran as specified. No forbidden actions taken.
 
 ## Verdict
 
-C. Final re-audit blocked, v4.3.0 tag not authorized
+A. Final re-audit passed, v4.3.0 tag authorized for Phase 32
