@@ -4,11 +4,18 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — build and test only, skip GitHub Release creation"
+        type: boolean
+        default: true
 
 jobs:
   release:
     name: Build and release
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
 
@@ -33,6 +40,7 @@ jobs:
         run: python -m build
 
       - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
