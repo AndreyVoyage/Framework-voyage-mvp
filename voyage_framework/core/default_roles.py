@@ -278,6 +278,7 @@ def all_profiles() -> list[RoleProfile]:
             (
                 ("no_technical_decisions", "Do not make technical implementation decisions."),
                 ("no_ux_decisions", "Do not define user interaction patterns."),
+                ("no_code_changes", "Must not write, edit, or request code changes."),
             ),
             (
                 "Ground analysis in discovery artifact.",
@@ -403,6 +404,10 @@ def all_profiles() -> list[RoleProfile]:
             (
                 ("no_feature_scope_changes", "Do not add or remove features from the scope."),
                 ("no_domain_model_changes", "Do not modify the domain model."),
+                (
+                    "no_implementation",
+                    "Must not implement code; produce architecture designs and decisions only.",
+                ),
             ),
             (
                 "Ground decisions in domain and feature artifacts.",

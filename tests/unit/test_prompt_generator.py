@@ -200,3 +200,44 @@ def test_prompt_generator_accepts_methodology_role() -> None:
     assert "Interviewer" in package.system_prompt
     assert "no_design_decisions" in package.system_prompt
     assert package.task_id == "VF-700"
+
+
+def test_prompt_includes_behavioral_guidance_section() -> None:
+    task = TaskYamlSpec(
+        id="VF-800",
+        title="Conduct requirements interview",
+        description="Elicit project requirements from stakeholders.",
+        role="interviewer",
+        mode="discover",
+        acceptance_criteria=["01-discovery.json produced"],
+    )
+    pkg = default_prompt_generator().generate(task=task, role_id="interviewer", mode_id="analysis")
+    assert "Behavioral guidance" in pkg.system_prompt
+
+
+def test_interviewer_prompt_includes_actual_hint() -> None:
+    task = TaskYamlSpec(
+        id="VF-800",
+        title="Conduct requirements interview",
+        description="Elicit project requirements from stakeholders.",
+        role="interviewer",
+        mode="discover",
+        acceptance_criteria=["01-discovery.json produced"],
+    )
+    pkg = default_prompt_generator().generate(task=task, role_id="interviewer", mode_id="analysis")
+    assert "Ask clarifying questions before assuming" in pkg.system_prompt
+
+
+def test_behavioral_guidance_preserves_existing_sections() -> None:
+    task = TaskYamlSpec(
+        id="VF-800",
+        title="Conduct requirements interview",
+        description="Elicit project requirements from stakeholders.",
+        role="interviewer",
+        mode="discover",
+        acceptance_criteria=["01-discovery.json produced"],
+    )
+    pkg = default_prompt_generator().generate(task=task, role_id="interviewer", mode_id="analysis")
+    assert "Interviewer" in pkg.system_prompt
+    assert "no_design_decisions" in pkg.system_prompt
+    assert "Output expectations" in pkg.system_prompt

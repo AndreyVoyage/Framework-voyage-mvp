@@ -122,3 +122,20 @@ def test_no_filesystem_io_during_all_profiles(
     assert len(profiles) == 20
     assert list(tmp_path.iterdir()) == before
     assert not (tmp_path / ".voyage").exists()
+
+
+def test_business_analyst_has_no_code_changes_boundary() -> None:
+    ba = default_agent_registry().require("business_analyst")
+    boundary_ids = [b.id for b in ba.boundaries]
+    assert "no_code_changes" in boundary_ids
+
+
+def test_solution_architect_has_no_implementation_boundary() -> None:
+    sa = default_agent_registry().require("solution_architect")
+    boundary_ids = [b.id for b in sa.boundaries]
+    assert "no_implementation" in boundary_ids
+
+
+def test_all_20_profiles_have_non_empty_prompt_hints() -> None:
+    for profile in all_profiles():
+        assert profile.prompt_hints, f"{profile.role_id}: empty prompt_hints"

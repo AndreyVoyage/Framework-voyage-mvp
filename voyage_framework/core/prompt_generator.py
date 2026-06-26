@@ -107,6 +107,7 @@ class PromptGenerator:
                 "Role boundaries",
                 tuple(f"{item.id}: {item.description}" for item in role.boundaries),
             ),
+            cls._section("Behavioral guidance", role.prompt_hints),
             f"Mode: {mode.display_name} ({mode.id})\nPurpose: {mode.purpose}",
             cls._section("Mode instructions", mode.instructions),
             cls._section("Mode constraints", mode.constraints),
