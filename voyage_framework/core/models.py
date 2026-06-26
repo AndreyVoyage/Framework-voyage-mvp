@@ -53,6 +53,9 @@ class EventType(StrEnum):
     PROCESS_STEP = "process_step"
     DECISION_RECORDED = "decision_recorded"
     TUTORIAL_GENERATED = "tutorial_generated"
+    ARTIFACT_PRODUCED = "artifact_produced"
+    HANDOFF_ISSUED = "handoff_issued"
+    PHASE_CLOSED = "phase_closed"
 
 
 class Event(BaseModel):
