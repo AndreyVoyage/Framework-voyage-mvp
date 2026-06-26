@@ -184,3 +184,19 @@ def test_generator_does_not_touch_filesystem_or_create_voyage(
     default_prompt_generator().generate(task=task, role_id="developer", mode_id="analysis")
     assert {path.name for path in root.iterdir()} == before_entries
     assert (root / ".voyage").exists() is voyage_existed
+
+
+def test_prompt_generator_accepts_methodology_role() -> None:
+    methodology_task = TaskYamlSpec(
+        id="VF-700",
+        title="Conduct requirements interview",
+        description="Elicit project requirements from stakeholders.",
+        role="interviewer",
+        acceptance_criteria=["01-discovery.json produced"],
+    )
+    package = default_prompt_generator().generate(
+        task=methodology_task, role_id="interviewer", mode_id="analysis"
+    )
+    assert "Interviewer" in package.system_prompt
+    assert "no_design_decisions" in package.system_prompt
+    assert package.task_id == "VF-700"

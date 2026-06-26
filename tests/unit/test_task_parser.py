@@ -589,3 +589,37 @@ class TestTaskYamlSpecDirectValidation:
                 role="developer",
                 acceptance_criteria=["Fails"],
             )
+
+
+# ───────────────────────────────────────────────────────────────
+# Methodology roles
+# ───────────────────────────────────────────────────────────────
+
+
+class TestMethodologyRoles:
+    """Verify that methodology roles pass PolicyEnforcer validation."""
+
+    @pytest.mark.parametrize(
+        "role",
+        [
+            "interviewer",
+            "business_analyst",
+            "ux_architect",
+            "solution_architect",
+            "task_generator",
+            "tester",
+            "auditor",
+            "chronicler",
+        ],
+    )
+    def test_methodology_role_is_accepted(self, parser: TaskParser, role: str) -> None:
+        yaml_content = f"""\
+id: VF-800
+title: Methodology task
+description: Task assigned to a methodology role.
+role: {role}
+acceptance_criteria:
+  - Artifact produced
+"""
+        spec = parser.parse_string(yaml_content)
+        assert spec.role == role

@@ -53,8 +53,8 @@ def test_all_roles():
     )
 
 
-def test_six_roles():
-    assert len(default_adapter_contract().supported_roles) == 6
+def test_twenty_roles():
+    assert len(default_adapter_contract().supported_roles) == 20
 
 
 def test_all_modes():

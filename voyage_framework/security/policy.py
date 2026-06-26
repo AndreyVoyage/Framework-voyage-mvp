@@ -71,6 +71,85 @@ class PolicyEnforcer:
             can_review=True,
             allowed_paths=["*"],
         ),
+        "interviewer": RolePolicy(
+            name="interviewer",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "business_analyst": RolePolicy(
+            name="business_analyst",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "ux_architect": RolePolicy(
+            name="ux_architect",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "domain_architect": RolePolicy(
+            name="domain_architect",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "event_stormer": RolePolicy(
+            name="event_stormer",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "feature_architect": RolePolicy(
+            name="feature_architect",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "solution_architect": RolePolicy(
+            name="solution_architect",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "consistency_validator": RolePolicy(
+            name="consistency_validator",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "mvp_optimizer": RolePolicy(
+            name="mvp_optimizer",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "voyage_architect": RolePolicy(
+            name="voyage_architect",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "task_generator": RolePolicy(
+            name="task_generator",
+            can_write_adr=True,
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "tester": RolePolicy(
+            name="tester",
+            can_run_tests=True,
+            can_review=True,
+            can_run_linters=True,
+            allowed_paths=["*"],
+        ),
+        "auditor": RolePolicy(
+            name="auditor",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
+        "chronicler": RolePolicy(
+            name="chronicler",
+            can_review=True,
+            allowed_paths=["*"],
+        ),
     }
 
     def __init__(self, policies: dict[str, RolePolicy] | None = None) -> None:

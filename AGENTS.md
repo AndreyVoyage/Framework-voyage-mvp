@@ -79,7 +79,8 @@ voyage_framework/
 │   ├── task_engine.py       # SQLite runtime task state
 │   ├── event_engine.py      # append-only audit log
 │   ├── context_builder.py   # Context Builder Lite
-│   ├── agent_registry.py    # read-only role catalog
+│   ├── agent_registry.py    # read-only role catalog (AgentRegistry class + factory)
+│   ├── default_roles.py     # static RoleProfile catalog (20 profiles, all_profiles())
 │   ├── prompt_modes.py      # read-only mode catalog
 │   └── prompt_generator.py  # deterministic prompt packages
 ├── cli.py                   # существующий CLI surface
@@ -114,8 +115,10 @@ docs/
 
 ### Read-only knowledge layer
 
-- `AgentRegistry` — deterministic read-only каталог шести role profiles. Он не запускает
-  агентов.
+- `AgentRegistry` — deterministic read-only каталог 20 registered role profiles (6 runtime +
+  16 methodology; `developer` and `reviewer` shared across both sets). Methodology roles are
+  prompt/context roles — they are not autonomous agents, do not execute themselves, and do not
+  call models automatically. Он не запускает агентов.
 - `ModeRegistry` — deterministic read-only каталог mode profiles. Он не активирует и не
   исполняет режимы.
 - `PromptGenerator` — read-only генератор `PromptPackage` для ручной передачи во внешние

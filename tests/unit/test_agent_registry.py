@@ -16,7 +16,28 @@ from voyage_framework.core.agent_registry import (
     default_agent_registry,
 )
 
-EXPECTED_ROLES = ["architect", "developer", "reviewer", "qa", "security", "devops"]
+EXPECTED_ROLES = [
+    "architect",
+    "developer",
+    "reviewer",
+    "qa",
+    "security",
+    "devops",
+    "interviewer",
+    "business_analyst",
+    "ux_architect",
+    "domain_architect",
+    "event_stormer",
+    "feature_architect",
+    "solution_architect",
+    "consistency_validator",
+    "mvp_optimizer",
+    "voyage_architect",
+    "task_generator",
+    "tester",
+    "auditor",
+    "chronicler",
+]
 
 
 def _custom_profile(role_id: str = "custom") -> RoleProfile:
