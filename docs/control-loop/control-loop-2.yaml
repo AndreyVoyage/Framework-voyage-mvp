@@ -1,0 +1,70 @@
+# VOYAGE-CONTROL-LOOP-2 — guarded checkpoint/worktree dry-run tool
+#
+# Validated against this repo (CONTROL-LOOP-2C):
+#   * id format: TaskYamlSpec enforces ^(VF|ST)-\d{3,}$ (task_models.py).
+#     VF-901 is free (existing: VF-900, VF-800, VF-11001, VF-11002).
+#   * role: 'devops' IS registered in PolicyEnforcer.DEFAULT_POLICIES (security/policy.py).
+#   * mode: 'implement' IS in the allowed set {discover, design, solution, plan, implement} (task_models.py).
+#   * status: 'pending' required for new tasks (task_parser.py) — satisfied.
+#
+# Tracked copy: docs/control-loop/control-loop-2.yaml
+# Runtime copy (gitignored): .voyage/tasks/control-loop-2.yaml
+
+id: VF-901
+title: "VOYAGE-CONTROL-LOOP-2 — guarded checkpoint/worktree dry-run tool"
+description: >
+  Implement tools/control_loop_checkpoint.ps1, a PS 5.1 script that creates a
+  three-level checkpoint (immutable tag + backup branch + sibling worktree) for
+  the overnight control loop. Default mode is dry-run: re-runs the Phase 1
+  preflight as a hard gate, validates all preconditions, and prints the exact
+  commands it would execute — zero mutations. Live execution requires the
+  explicit -Execute switch. No task queue, no runner, no Claude invocation,
+  and no task execution are in scope for this phase.
+
+role: devops
+mode: implement
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "tools/control_loop_checkpoint.ps1 exists and is PS 5.1-compatible (0 parse errors)."
+  - "Default (no -Execute) mode re-runs Phase 1 preflight, aborts if not GO, evaluates 8 preconditions, prints exact commands, and exits 0 — zero mutations."
+  - "Live (-Execute) mode creates tag, backup branch, and sibling worktree in sequence; verifies each; reports partial state on failure."
+  - "docs/control-loop/CONTROL_LOOP_2_CONTRACT.md exists and documents: purpose, dry-run-first model, checkpoint model, worktree model, -Execute gate, no Claude bridge, forbidden actions, human approval gates, and acceptance criteria."
+  - "docs/control-loop/control-loop-2.yaml exists with valid id VF-901, role devops, mode implement, status pending."
+  - "Dry-run creates no tags, branches, or worktrees."
+  - "No source code under voyage_framework/ modified; no .voyage runtime files modified."
+
+files:
+  read:
+    - docs/control-loop/CONTROL_LOOP_SPEC.md
+    - docs/control-loop/control-loop-1.yaml
+    - tools/control_loop_preflight.ps1
+  modify:
+    - docs/control-loop/CONTROL_LOOP_2_CONTRACT.md
+    - docs/control-loop/control-loop-2.yaml
+    - tools/control_loop_checkpoint.ps1
+
+tests:
+  - "powershell -NoProfile -ExecutionPolicy Bypass -File tools/control_loop_checkpoint.ps1 -RepoPath ."
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-2
+  phase: 2
+  loop_mode: "DRY-RUN CHECKPOINT CREATION"
+  modifies_state: false
+  source_code_touched: false
+  creates_checkpoint: false
+  creates_worktree: false
+  runs_claude: false
+  performs_rollback: false
+  commit_or_push: false
+  out_of_scope:
+    - "Task queue and per-task gate sequence (CONTROL-LOOP-3)."
+    - "Claude Code invocation inside the worktree (CONTROL-LOOP-4)."
+    - "Rollback execution, git reset inside worktree, morning summary (CONTROL-LOOP-5)."
+    - "Any push, merge to main, deploy, docker, ssh, or certbot."
+    - "Reading or writing .env or any secret file."
+    - "Modifying .voyage/events.db, .voyage/events.jsonl, .voyage/tasks.db."
+    - "Modifying voyage_framework/ source or tests."
+  next_phase: "VOYAGE-CONTROL-LOOP-3 — task queue + report parser"
