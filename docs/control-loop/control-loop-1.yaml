@@ -1,0 +1,71 @@
+# VOYAGE-CONTROL-LOOP-1 — checkpoint/worktree automation preflight
+#
+# Validated against this repo (CONTROL-LOOP-1A):
+#   * id format: TaskYamlSpec enforces ^(VF|ST)-\d{3,}$ (task_models.py).
+#     VF-900 is free (existing: VF-800, VF-11001, VF-11002). Track label kept in metadata.track.
+#   * role: 'devops' IS registered in PolicyEnforcer.DEFAULT_POLICIES (security/policy.py).
+#   * mode: 'design' IS in the allowed set {discover, design, solution, plan, implement} (task_models.py).
+#   * status: 'pending' required for new tasks (task_parser.py) — satisfied.
+#
+# Tracked copy: docs/control-loop/control-loop-1.yaml
+# Runtime copy (gitignored): .voyage/tasks/control-loop-1.yaml
+
+id: VF-900
+title: "VOYAGE-CONTROL-LOOP-1 — checkpoint/worktree automation preflight"
+description: >
+  Ship the minimal, safe Phase 1 package for the overnight local control loop:
+  a frozen safety SPEC, a strictly read-only PowerShell preflight, and this task
+  spec. The preflight only inspects readiness (repo/branch/HEAD, clean working
+  tree, origin sync, claude CLI presence, git worktree availability, a free
+  sibling worktree path, docs/handoff presence) and prints a GO/NO-GO report.
+  It creates no checkpoint, no branch, no worktree, runs no Claude, performs no
+  rollback/reset/clean, makes no commit/push, and changes no runtime state.
+  Checkpoint and worktree creation are deferred to VOYAGE-CONTROL-LOOP-2.
+
+role: devops
+mode: design
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "docs/control-loop/CONTROL_LOOP_SPEC.md exists and defines checkpoint model, worktree/nightly branch model, allowed modes (READ_ONLY, CODE_NO_COMMIT, TEST, DIFF_AUDIT), forbidden actions, rollback rules, morning report format, and human approval gates."
+  - "tools/control_loop_preflight.ps1 exists and is read-only: it makes no checkpoint, branch, worktree, commit, push, reset, clean, and does not launch Claude or read .env."
+  - "Preflight reports repo path, branch, HEAD, working-tree cleanliness, and main-vs-origin sync."
+  - "Preflight reports whether the `claude` CLI is available and whether `git worktree` is supported."
+  - "Preflight reports whether the future sibling worktree path is free and whether docs/handoff exists."
+  - "Preflight prints the denylist, the later-automatable modes, and the required stop conditions, then a GO/NO-GO verdict with a matching exit code (0=GO, 1=NO-GO, 2=cannot run)."
+  - "No source code under voyage_framework/ is modified; no .voyage runtime files are modified."
+
+files:
+  read:
+    - docs/VOYAGE_V4_1_CONTRACT.md
+    - AGENTS.md
+  modify:
+    - docs/control-loop/CONTROL_LOOP_SPEC.md
+    - docs/control-loop/control-loop-1.yaml
+    - tools/control_loop_preflight.ps1
+
+tests:
+  - "powershell -NoProfile -ExecutionPolicy Bypass -File tools/control_loop_preflight.ps1 -RepoPath ."
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-1
+  phase: 1
+  loop_mode: "READ-ONLY PREFLIGHT + SPEC ONLY"
+  modifies_state: false
+  source_code_touched: false
+  creates_checkpoint: false
+  creates_worktree: false
+  runs_claude: false
+  performs_rollback: false
+  commit_or_push: false
+  out_of_scope:
+    - "Implementing the runner / task queue / report parser (CONTROL-LOOP-3)."
+    - "Creating checkpoint tags, backup branches, or git worktrees (CONTROL-LOOP-2)."
+    - "Launching Claude or any guarded execution (CONTROL-LOOP-4)."
+    - "Rollback execution, git reset, or git clean (CONTROL-LOOP-5)."
+    - "Any commit, push, merge to main, deploy, docker, ssh, or certbot."
+    - "Reading or writing .env or any secret file."
+    - "Modifying .voyage/events.db, .voyage/events.jsonl, .voyage/tasks.db, or other runtime state."
+    - "Modifying existing runtime behavior or any voyage_framework/ source."
+  next_phase: "VOYAGE-CONTROL-LOOP-2 — checkpoint/worktree dry-run or guarded creation"
