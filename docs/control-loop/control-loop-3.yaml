@@ -1,0 +1,67 @@
+# VOYAGE-CONTROL-LOOP-3 - task queue and handoff protocol
+#
+# Tracked copy: docs/control-loop/control-loop-3.yaml
+# Runtime/generated handoff files are gitignored under docs/handoff/.
+
+id: VF-902
+title: "VOYAGE-CONTROL-LOOP-3 - task queue and handoff protocol"
+description: >
+  Implement the CONTROL-LOOP-3 protocol artifacts for manual task queue selection
+  and local handoff/report handling inside the auto worktree. This phase creates
+  contract documentation and read-only helper scripts only. It does not execute
+  development tasks, invoke Claude or Codex bridges, push, merge, deploy, read
+  .env, or modify .voyage runtime state.
+
+role: devops
+mode: implement
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "docs/control-loop/CONTROL_LOOP_3_CONTRACT.md exists and documents the task queue model, handoff protocol, roles, safety gates, stop conditions, and out-of-scope items."
+  - "tools/control_loop_next_task.ps1 exists, is PowerShell 5.1 compatible, pure ASCII, and read-only by default."
+  - "tools/control_loop_handoff.ps1 exists, is PowerShell 5.1 compatible, pure ASCII, and read-only by default."
+  - "Helper scripts do not edit files, stage, commit, push, read .env, touch .voyage, invoke Claude/Codex bridges, or execute tasks."
+  - "Primary repo remains untouched; CONTROL-LOOP-3 changes are made only in the auto worktree."
+  - "Handoff reports are specified as UTF-8 local files under docs/handoff/."
+  - "Next action output is explicit and requires human approval before any executor task."
+  - "No task execution and no bridge invocation are performed in this phase."
+  - "No .env is read and no .voyage runtime files are modified."
+
+files:
+  read:
+    - docs/control-loop/CONTROL_LOOP_SPEC.md
+    - docs/control-loop/CONTROL_LOOP_2_CONTRACT.md
+    - docs/handoff/README.md
+    - tools/copy_latest_report.ps1
+    - tools/copy_report_to_clipboard.ps1
+  modify:
+    - docs/control-loop/CONTROL_LOOP_3_CONTRACT.md
+    - docs/control-loop/control-loop-3.yaml
+    - tools/control_loop_next_task.ps1
+    - tools/control_loop_handoff.ps1
+
+tests:
+  - "powershell -NoProfile -ExecutionPolicy Bypass -File tools/control_loop_next_task.ps1 -RepoPath ."
+  - "powershell -NoProfile -ExecutionPolicy Bypass -File tools/control_loop_handoff.ps1 -RepoPath ."
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-3
+  phase: 3
+  loop_mode: "TASK QUEUE + HANDOFF PROTOCOL"
+  modifies_state: false
+  source_code_touched: false
+  creates_checkpoint: false
+  creates_worktree: false
+  runs_claude: false
+  performs_rollback: false
+  commit_or_push: false
+  out_of_scope:
+    - "Executing real development tasks."
+    - "Invoking Claude, Codex, or any bridge automation."
+    - "Pushing, merging to main, deploying, docker, ssh, or certbot."
+    - "Reading .env or any secret file."
+    - "Modifying .voyage/events.db, .voyage/events.jsonl, .voyage/tasks.db, or other runtime state."
+    - "Modifying primary repo files."
+    - "Modifying voyage_framework/ source or tests."
+  next_phase: "VOYAGE-CONTROL-LOOP-4 - guarded bridge invocation inside the worktree"
