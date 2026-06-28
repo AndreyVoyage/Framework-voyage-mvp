@@ -1,0 +1,46 @@
+# VOYAGE-CONTROL-LOOP-10C - implementation plan for minimal controlled launcher
+#
+# Tracked copy: docs/control-loop/control-loop-10c.yaml
+# This phase is plan/spec only. It does not implement code, tests, or CLI changes.
+
+id: VF-912
+title: Define CONTROL-LOOP-10C implementation plan for minimal controlled launcher
+role: devops
+mode: plan
+status: pending
+priority: high
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-10
+  phase: 10C
+  depends_on:
+    - VF-911
+  baseline_commit: 0e160fc1df87313fed01c3385a1ec4af0f6ab46b
+  implementation_plan_defined: true
+  code_implemented: false
+  tests_implemented: false
+  cli_modified: false
+  launcher_executed: false
+  runtime_files_created: false
+  first_code_phase: CONTROL-LOOP-10D
+  future_runtime_package: logs/handoff/CONTROL_LOOP_10D/
+  future_allowed_files:
+    - voyage_framework/core/launcher.py
+    - voyage_framework/cli.py
+    - tests/unit/test_launcher.py
+    - tests/integration/test_launcher_cli.py
+  single_shot_only: true
+  human_approval_required: true
+  manual_relay_preserved: true
+
+acceptance_criteria:
+  - CONTROL-LOOP-10C defines the first implementation slice without coding it.
+  - The future 10D file scope is explicit and limited.
+  - The plan requires Python-only implementation first.
+  - The plan defines RuntimePackage and HumanApproval parsing.
+  - The plan defines preflight gates and full hash verification.
+  - The plan requires synthetic hash rejection.
+  - The plan defines dry-run/report-only output generation.
+  - The plan forbids scheduler, night mode, bridge loop, AI invocation, commit, push, merge, and deploy.
+  - The plan requires tests for success and STOP/failure paths.
+  - Manual relay remains permanently available.
