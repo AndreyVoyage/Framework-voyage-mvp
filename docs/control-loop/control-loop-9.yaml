@@ -1,0 +1,32 @@
+id: VF-909
+title: Define CONTROL-LOOP-9 controlled auto-launch contract
+role: devops
+mode: implement
+status: pending
+priority: high
+description: Draft the CONTROL-LOOP-9 controlled auto-launch contract without implementing or executing auto-launch.
+metadata:
+  track: VOYAGE-CONTROL-LOOP-9
+  phase: 9A
+  controlled_auto_launch_defined: true
+  auto_launch_implemented: false
+  auto_launch_executed: false
+  bridge_execution_authorized: false
+  runner_implemented: false
+  scheduler_implemented: false
+  overnight_execution_authorized: false
+  runtime_files_created: false
+  single_shot_only: true
+  human_approval_required: true
+  manual_relay_preserved: true
+acceptance_criteria:
+  - CONTROL_LOOP_9_CONTROLLED_AUTO_LAUNCH.md defines controlled auto-launch boundaries.
+  - The contract states CONTROL-LOOP-9A is spec-only.
+  - The contract forbids auto-launch execution in CONTROL-LOOP-9A.
+  - The contract forbids bridge execution in CONTROL-LOOP-9A.
+  - The contract forbids runner and scheduler implementation in CONTROL-LOOP-9A.
+  - The contract preserves manual relay as a permanent fallback.
+  - The contract requires explicit human approval before every launch.
+  - The contract requires single-shot execution and STOP after one report.
+  - The contract defines required preflight gates and STOP conditions.
+  - control-loop-9.yaml validates as YAML and records 9A metadata.
