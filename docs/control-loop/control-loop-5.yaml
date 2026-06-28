@@ -1,0 +1,64 @@
+# VOYAGE-CONTROL-LOOP-5 - overnight dry-run contract and task spec
+#
+# Tracked copy: docs/control-loop/control-loop-5.yaml
+# Runtime/generated handoff files are gitignored under docs/handoff/.
+
+id: VF-903
+title: "VOYAGE-CONTROL-LOOP-5 - overnight dry-run contract and spec"
+description: >
+  Create the CONTROL-LOOP-5 contract and task specification for the first limited
+  overnight dry-run. This phase produces documentation only. It does not implement
+  the runner, scheduler, or any overnight execution. It does not push, merge,
+  invoke Claude/Codex/Kimi bridges, read .env, or modify .voyage runtime state.
+
+role: devops
+mode: implement
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "docs/control-loop/CONTROL_LOOP_5_CONTRACT.md exists and documents the first overnight dry-run profile, runner model, task selection rules, stop conditions, file/write policy, morning report format, checkpoint strategy, gate sequence, failure handling, drift handling, rollback boundary, human approval gates, forbidden actions, out-of-scope items, and future CONTROL-LOOP-6+ items."
+  - "docs/control-loop/control-loop-5.yaml exists with id VF-903, role devops, mode implement, status pending, and metadata.track VOYAGE-CONTROL-LOOP-5."
+  - "The contract specifies that the first dry-run is report-only, manual, single-task, and bounded to 15 minutes."
+  - "The contract states that no runner code, scheduler, OS task, autonomous bridge, or automatic multi-task queue selection is implemented in this phase."
+  - "The contract states that primary repo remains read-only and work happens only in the auto worktree."
+  - "The contract forbids push, merge, deploy, docker, ssh, certbot, .env read, .voyage mutation, and branch/tag/worktree deletion."
+  - "The contract requires a fresh checkpoint at the start of each real night run and a UTF-8 morning report after the run."
+  - "Primary repo remains untouched; CONTROL-LOOP-5 changes are made only in the auto worktree."
+
+files:
+  read:
+    - docs/control-loop/CONTROL_LOOP_SPEC.md
+    - docs/control-loop/CONTROL_LOOP_2_CONTRACT.md
+    - docs/control-loop/CONTROL_LOOP_3_CONTRACT.md
+    - docs/control-loop/CONTROL_LOOP_4_GUARDED_EXECUTION.md
+  modify:
+    - docs/control-loop/CONTROL_LOOP_5_CONTRACT.md
+    - docs/control-loop/control-loop-5.yaml
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-5
+  phase: 5B
+  profile: report-only-first
+  runner_implemented: false
+  scheduler_implemented: false
+  overnight_execution_authorized: false
+  modifies_state: false
+  source_code_touched: false
+  creates_checkpoint: false
+  creates_worktree: false
+  runs_claude: false
+  performs_rollback: false
+  commit_or_push: false
+  out_of_scope:
+    - "Implementing the PowerShell runner script."
+    - "Implementing OS scheduler integration or unattended operation."
+    - "Automatic multi-task queue selection or sequencing."
+    - "Autonomous Claude, Codex, or Kimi bridge invocation."
+    - "Automatic commit, push, or merge in the first report-only dry-run."
+    - "Executing a real overnight run in this phase."
+    - "Reading .env or any secret file."
+    - "Modifying .voyage/events.db, .voyage/events.jsonl, .voyage/tasks.db, or other runtime state."
+    - "Modifying primary repo files."
+    - "Modifying voyage_framework/ source or tests."
+  next_phase: "VOYAGE-CONTROL-LOOP-6 - implement the runner skeleton with dry-run/report-only modes"
