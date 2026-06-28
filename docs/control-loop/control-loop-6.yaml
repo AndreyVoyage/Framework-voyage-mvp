@@ -1,0 +1,67 @@
+# VOYAGE-CONTROL-LOOP-6 - Work Code bridge contract and handoff templates
+#
+# Tracked copy: docs/control-loop/control-loop-6.yaml
+# This phase is docs/spec/templates only. It does not implement or execute a runner.
+
+id: VF-904
+title: "VOYAGE-CONTROL-LOOP-6 - Work Code bridge contract"
+description: >
+  Create the CONTROL-LOOP-6 bridge contract, selectable mode config, and tracked
+  handoff templates for a future file-based Work<->Code bridge. This phase
+  defines the contract/spec/templates only. It does not implement runner code,
+  auto-launch Claude Code, execute the bridge, run overnight, create scheduler
+  integration, push, merge, deploy, read .env, or mutate .voyage runtime state.
+
+role: devops
+mode: implement
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "docs/control-loop/CONTROL_LOOP_6_CONTRACT.md exists and documents purpose, current baseline, manual vs automatic modes, mode selector, file-based handoff protocol, schemas, turn ownership, responsibilities, continuation and STOP rules, mode limits, hash verification, file/write policy, safety boundary, human approval gates, forbidden actions, out-of-scope items, and future CONTROL-LOOP-7/8 items."
+  - "docs/control-loop/loop-config.yaml exists, parses as YAML, defaults to mode manual_relay, and sets max_cycles 1, max_tasks 1, timeout_minutes 15, risk report-only, and human_gate required."
+  - "docs/handoff/NEXT_ACTION_TEMPLATE.md exists and includes the required voyage.next_action.v1 frontmatter fields plus task description, allowed file scope, forbidden actions, and expected report path."
+  - "docs/handoff/LATEST_AGENT_REPORT_TEMPLATE.md exists and includes the required voyage.agent_report.v1 frontmatter fields plus summary, evidence, deviations, validation results, and recommended next action."
+  - "docs/handoff/MORNING_REPORT_TEMPLATE.md exists and includes run date/time, mode, baseline commit, checkpoint, cycle/task counts, pass/fail/stop counts, auto commits, rollback status, anomalies, human decision recommendation, and a no push/merge/deploy statement."
+  - "The contract states manual_relay is permanent and default; automatic mode does not replace manual mode."
+  - "The contract states CONTROL-LOOP-6 defines the bridge but does not auto-launch Claude Code, execute a bridge, implement a runner, run overnight, or create scheduler integration."
+  - "The contract states CL6 bridge is one-shot first with max_cycles 1 and max_tasks 1, and Work must STOP after one report even if the report passes."
+  - "The contract requires real git rev-parse hash verification and rejects synthetic hashes."
+  - "No source code, tests, tools, .voyage files, runtime handoff files, primary repo files, or existing CONTROL-LOOP-1/2/3/4/5 files are modified."
+
+files:
+  read:
+    - docs/control-loop/CONTROL_LOOP_5_CONTRACT.md
+    - docs/control-loop/control-loop-5.yaml
+    - docs/handoff/README.md
+  modify:
+    - docs/control-loop/CONTROL_LOOP_6_CONTRACT.md
+    - docs/control-loop/control-loop-6.yaml
+    - docs/control-loop/loop-config.yaml
+    - docs/handoff/NEXT_ACTION_TEMPLATE.md
+    - docs/handoff/LATEST_AGENT_REPORT_TEMPLATE.md
+    - docs/handoff/MORNING_REPORT_TEMPLATE.md
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-6
+  phase: 6B
+  manual_relay_default: true
+  bridge_mode_defined: true
+  runner_implemented: false
+  auto_launch_implemented: false
+  bridge_execution_authorized: false
+  overnight_execution_authorized: false
+  scheduler_implemented: false
+  source_code_touched: false
+  tests_touched: false
+  tools_touched: false
+  runtime_handoff_files_created: false
+  commit_or_push_to_main: false
+  out_of_scope:
+    - "Implementing runner code."
+    - "Auto-launching Claude Code or any external AI tool."
+    - "Executing the Work Code bridge."
+    - "Running overnight or creating scheduler integration."
+    - "Creating or modifying runtime NEXT_ACTION.md, LATEST_AGENT_REPORT.md, or MORNING_REPORT.md."
+    - "Pushing, merging, deploying, reading .env, or mutating .voyage runtime state."
+  next_phase: "CONTROL-LOOP-7 may define a dry-run runner skeleton after human approval."

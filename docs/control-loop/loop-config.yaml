@@ -1,0 +1,22 @@
+# CONTROL-LOOP mode selector.
+# Default mode is permanent manual relay. Automatic modes do not replace it.
+#
+# Allowed modes:
+#   - manual_relay
+#   - assisted_handoff
+#   - bridge_one_shot
+#   - supervised_loop
+#   - overnight_autonomous
+#
+# Allowed risk values:
+#   - report-only
+#   - docs-only
+#   - tests-only
+#   - small-refactor
+
+mode: manual_relay
+max_cycles: 1
+max_tasks: 1
+timeout_minutes: 15
+risk: report-only
+human_gate: required
