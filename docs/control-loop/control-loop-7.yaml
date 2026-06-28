@@ -1,0 +1,69 @@
+# VOYAGE-CONTROL-LOOP-7 - assisted handoff dry-run contract and spec
+#
+# Tracked copy: docs/control-loop/control-loop-7.yaml
+# This phase is contract/spec only. It does not create runtime handoff files or
+# execute the assisted handoff dry-run.
+
+id: VF-905
+title: "VOYAGE-CONTROL-LOOP-7 - assisted handoff dry-run contract"
+description: >
+  Create the CONTROL-LOOP-7A contract and task specification for the first
+  assisted handoff dry-run. In assisted handoff mode, Work writes a NEXT_ACTION
+  handoff file, Andrey manually launches Code, Code executes the single approved
+  action and writes a LATEST_AGENT_REPORT, and Work produces a final
+  MORNING_REPORT. This phase creates the contract/spec only. It does not create
+  runtime handoff files, auto-launch Claude Code, execute the bridge, run
+  overnight, create scheduler integration, push, merge, deploy, read .env, or
+  mutate .voyage runtime state.
+
+role: devops
+mode: implement
+priority: high
+status: pending
+
+acceptance_criteria:
+  - "docs/control-loop/CONTROL_LOOP_7_ASSISTED_HANDOFF.md exists and documents purpose, current baseline, relationship to CONTROL-LOOP-6, assisted handoff model, human routing, runtime artifact policy, runtime file paths, NEXT_ACTION/LATEST_AGENT_REPORT/MORNING_REPORT creation rules, turn-token flow, pre-Code and post-Code validation gates, STOP conditions, hash verification, repository/worktree policy, forbidden actions, no --no-verify rule, out-of-scope items, and future CONTROL-LOOP-7B/7C/7D items."
+  - "docs/control-loop/control-loop-7.yaml exists with id VF-905, role devops, mode implement, status pending, and metadata.track VOYAGE-CONTROL-LOOP-7."
+  - "The contract states manual_relay remains default and permanent, and assisted_handoff requires Andrey to manually launch Code."
+  - "The contract states the first assisted handoff is one-shot only with max_cycles 1 and max_tasks 1, and Work must STOP after one Code report."
+  - "The contract defines runtime directory logs/handoff/CONTROL_LOOP_7B/ and runtime files NEXT_ACTION.md, LATEST_AGENT_REPORT.md, MORNING_REPORT.md, but states they are not created in this phase."
+  - "The contract forbids auto-launch, autonomous loop, night run, scheduler, push, merge, deploy, SSH, Docker, Certbot, .env read, .voyage mutation, branch/tag/worktree deletion, global git config modification, --no-verify bypass, Code reporting directly to ChatGPT, and Work auto-sending to Code."
+  - "The contract requires real git rev-parse hash verification, rejects synthetic hashes, and mandates echo-match of cycle, task_id, and baseline_commit."
+  - "Primary repo remains untouched; CONTROL-LOOP-7A changes are made only in the auto worktree."
+
+files:
+  read:
+    - docs/control-loop/CONTROL_LOOP_6_CONTRACT.md
+    - docs/control-loop/control-loop-6.yaml
+    - docs/control-loop/loop-config.yaml
+    - docs/handoff/NEXT_ACTION_TEMPLATE.md
+    - docs/handoff/LATEST_AGENT_REPORT_TEMPLATE.md
+    - docs/handoff/MORNING_REPORT_TEMPLATE.md
+    - docs/handoff/README.md
+  modify:
+    - docs/control-loop/CONTROL_LOOP_7_ASSISTED_HANDOFF.md
+    - docs/control-loop/control-loop-7.yaml
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-7
+  phase: 7A
+  assisted_handoff_defined: true
+  manual_launch_required: true
+  runtime_files_created: false
+  runner_implemented: false
+  auto_launch_implemented: false
+  bridge_execution_authorized: false
+  overnight_execution_authorized: false
+  modifies_state: false
+  source_code_touched: false
+  creates_checkpoint: false
+  creates_worktree: false
+  commit_or_push: false
+  out_of_scope:
+    - "Creating runtime handoff files in this phase."
+    - "Launching Claude Code or any external AI tool."
+    - "Executing the Work Code bridge."
+    - "Running an autonomous loop, night run, or scheduler integration."
+    - "Pushing, merging, deploying, reading .env, or mutating .voyage runtime state."
+    - "Modifying primary repo files or existing CONTROL-LOOP-1/2/3/4/5/6 files."
+  next_phase: "CONTROL-LOOP-7B may create the first runtime handoff files and perform a report-only dry-run without launching AI tools."
