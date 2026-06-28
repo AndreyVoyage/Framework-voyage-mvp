@@ -1,0 +1,43 @@
+# VOYAGE-CONTROL-LOOP-10 - minimal controlled launcher contract
+#
+# Tracked copy: docs/control-loop/control-loop-10.yaml
+# This phase is contract/spec only. It does not implement or execute the launcher.
+
+id: VF-911
+title: Define CONTROL-LOOP-10 minimal controlled launcher contract
+role: devops
+mode: implement
+status: pending
+priority: high
+
+metadata:
+  track: VOYAGE-CONTROL-LOOP-10
+  phase: 10A
+  depends_on:
+    - VF-909
+    - VF-910
+  baseline_commit: 8ce1b353c786a2a4a4a99c84c9d553551c811d42
+  controlled_launcher_defined: true
+  launcher_implemented: false
+  launcher_executed: false
+  runner_implemented: false
+  scheduler_implemented: false
+  bridge_execution_authorized: false
+  auto_launch_execution_authorized: false
+  overnight_execution_authorized: false
+  runtime_files_created: false
+  single_shot_only: true
+  human_approval_required: true
+  manual_relay_preserved: true
+
+acceptance_criteria:
+  - CONTROL-LOOP-10 contract defines a minimal controlled launcher.
+  - CONTROL-LOOP-10A remains spec-only.
+  - No launcher, runner, bridge, scheduler, or night mode is implemented or executed in 10A.
+  - Contract requires explicit human approval before every future launcher run.
+  - Contract requires single-shot execution only.
+  - Contract forbids loops and second NEXT_ACTION creation.
+  - Contract forbids push, merge, commit, deploy, .env reads, and .voyage writes.
+  - Contract requires full hash verification and rejects synthetic hashes.
+  - Contract defines STOP conditions for drift, dirty repos, malformed packages, missing approval, unexpected files, and forbidden actions.
+  - Manual relay remains permanently available.
