@@ -31,6 +31,7 @@ from voyage_framework.chronicler.decision_log import DecisionLog
 from voyage_framework.chronicler.docs_builder import DocsBuilder
 from voyage_framework.chronicler.journal import ProcessJournal
 from voyage_framework.core.event_engine import EventEngine
+from voyage_framework.core.launcher import LauncherConfig, run_dry_run
 from voyage_framework.core.models import SecurityPolicy
 from voyage_framework.core.task_engine import (
     TaskAlreadyExistsError,
@@ -846,6 +847,38 @@ def _sync_status(
         return 1
 
 
+def _launcher_dry_run(args: argparse.Namespace) -> int:
+    """Run the minimal controlled launcher in dry-run mode."""
+    expected = args.expected_origin_main
+    if len(expected) != 40 or not all(c in "0123456789abcdef" for c in expected.lower()):
+        print("❌ expected_origin-main must be a full 40-character hex hash")
+        return 1
+
+    config = LauncherConfig(
+        package_dir=Path(args.package),
+        primary_repo=Path(args.primary_repo),
+        auto_worktree=Path(args.auto_worktree),
+        expected_origin_main=expected,
+    )
+
+    result = run_dry_run(config)
+    if result.success:
+        print(f"✅ Launcher dry-run completed: {result.report_path}")
+        return 0
+
+    print(f"❌ Launcher STOP: {result.message}")
+    return 1
+
+
+def _dispatch_launcher(args: argparse.Namespace) -> int:
+    """Dispatcher for launcher subcommands."""
+    command = getattr(args, "launcher_command", None)
+    if command == "dry-run":
+        return _launcher_dry_run(args)
+    print("❌ No launcher subcommand provided. Use: dry-run")
+    return 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1014,6 +1047,38 @@ def main() -> int:
         help="Project ID",
     )
 
+    # launcher (Phase 10D minimal controlled launcher)
+    launcher_parser = subparsers.add_parser(
+        "launcher",
+        help="Minimal controlled launcher commands",
+    )
+    launcher_subparsers = launcher_parser.add_subparsers(dest="launcher_command")
+
+    launcher_dry_run_parser = launcher_subparsers.add_parser(
+        "dry-run",
+        help="Run a report-only launcher dry-run",
+    )
+    launcher_dry_run_parser.add_argument(
+        "--package",
+        required=True,
+        help="Path to the runtime package directory",
+    )
+    launcher_dry_run_parser.add_argument(
+        "--primary-repo",
+        required=True,
+        help="Path to the primary repository",
+    )
+    launcher_dry_run_parser.add_argument(
+        "--auto-worktree",
+        required=True,
+        help="Path to the auto worktree",
+    )
+    launcher_dry_run_parser.add_argument(
+        "--expected-origin-main",
+        required=True,
+        help="Full 40-character SHA-1 hash expected for origin/main",
+    )
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1170,6 +1235,7 @@ def main() -> int:
         "graph": _dispatch_graph,
         "chronicler": _dispatch_chronicler,
         "docs": _dispatch_docs,
+        "launcher": _dispatch_launcher,
     }
 
     command_name: str = args.command
