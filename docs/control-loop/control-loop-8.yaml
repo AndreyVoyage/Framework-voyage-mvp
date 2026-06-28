@@ -1,0 +1,28 @@
+id: VF-907
+title: Define CONTROL-LOOP-8 supervised loop contract
+role: devops
+mode: implement
+status: pending
+priority: high
+description: Define the supervised loop contract for max_cycles=2 without implementing bridge execution, auto-launch, runner, scheduler, or night mode.
+metadata:
+  track: VOYAGE-CONTROL-LOOP-8
+  phase: 8A
+  supervised_loop_defined: true
+  max_cycles: 2
+  max_tasks: 2
+  human_approval_required: true
+  auto_launch_implemented: false
+  runner_implemented: false
+  bridge_execution_authorized: false
+  overnight_execution_authorized: false
+  runtime_files_created: false
+acceptance_criteria:
+  - CONTROL_LOOP_8_SUPERVISED_LOOP.md defines the supervised loop model.
+  - The contract requires max_cycles=2 and max_tasks=2.
+  - The contract requires human approval before any second cycle.
+  - The contract requires strict gates before cycle 2.
+  - The contract forbids auto-launch, runner implementation, scheduler, and night mode in CONTROL-LOOP-8A.
+  - The contract rejects synthetic hashes and requires real git rev-parse hashes.
+  - The task YAML validates and contains CONTROL-LOOP-8 metadata.
+  - No runtime handoff files are created in CONTROL-LOOP-8A.
