@@ -4,8 +4,8 @@
   "mode": "source_only",
   "target_repo": "C:/DEV/Narrative/voyage-narrative-engine",
   "expected_branch": "main",
-  "expected_head": "9d3d77764c1c15551df17208a1cc3dcc9c12c3aa",
-  "expected_origin_main": "9d3d77764c1c15551df17208a1cc3dcc9c12c3aa",
+  "expected_head": "ec2bb16472f9266aa0af47116fca898138180c1a",
+  "expected_origin_main": "ec2bb16472f9266aa0af47116fca898138180c1a",
   "require_clean_worktree": true,
   "allowed_paths": [
     "scenarios/SCENARIO_*.json"
