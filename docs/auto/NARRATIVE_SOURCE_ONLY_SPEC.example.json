@@ -1,0 +1,30 @@
+{
+  "schema": "voyage.auto.spec.v1",
+  "id": "D0B-SOURCE-ONLY",
+  "mode": "source_only",
+  "target_repo": "C:/DEV/Narrative/voyage-narrative-engine",
+  "expected_branch": "main",
+  "expected_head": "12057ecf0bdfccfa27a1707a65a86f1c1c5e4f42",
+  "expected_origin_main": "12057ecf0bdfccfa27a1707a65a86f1c1c5e4f42",
+  "require_clean_worktree": true,
+  "allowed_paths": [
+    "novel/sources/**"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".voyage/**",
+    "tools/**",
+    "personas/**",
+    "game/script.rpy",
+    "game/screens.rpy",
+    "script.rpy",
+    "screens.rpy"
+  ],
+  "max_files_changed": 1,
+  "allow_execution": false,
+  "allow_commit": false,
+  "allow_push": false,
+  "allow_merge": false,
+  "allow_bridge": false,
+  "allow_auto_launch": false
+}

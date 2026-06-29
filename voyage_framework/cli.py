@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -30,6 +31,12 @@ from voyage_framework.agents.runtime import AgentRuntime
 from voyage_framework.chronicler.decision_log import DecisionLog
 from voyage_framework.chronicler.docs_builder import DocsBuilder
 from voyage_framework.chronicler.journal import ProcessJournal
+from voyage_framework.core.auto_loop import (
+    AutoLoopError,
+    run_plan,
+    run_preflight,
+    run_validate,
+)
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.launcher import LauncherConfig, run_dry_run
 from voyage_framework.core.models import SecurityPolicy
@@ -879,6 +886,52 @@ def _dispatch_launcher(args: argparse.Namespace) -> int:
     return 1
 
 
+def _auto_preflight(args: argparse.Namespace) -> int:
+    """Run source-only autoloop preflight checks."""
+    try:
+        ok, report = run_preflight(Path(args.spec))
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "preflight", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(report, indent=2))
+    return 0 if ok else 1
+
+
+def _auto_plan(args: argparse.Namespace) -> int:
+    """Build a non-executed source-only autoloop command plan."""
+    try:
+        ok, report = run_plan(Path(args.spec))
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "plan", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(report, indent=2))
+    return 0 if ok else 1
+
+
+def _auto_validate(args: argparse.Namespace) -> int:
+    """Validate current target repo changes against source-only path guards."""
+    try:
+        ok, report = run_validate(Path(args.spec))
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "validate", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(report, indent=2))
+    return 0 if ok else 1
+
+
+def _dispatch_auto(args: argparse.Namespace) -> int:
+    """Dispatcher for source-only autoloop scaffold commands."""
+    command = getattr(args, "auto_command", None)
+    if command == "preflight":
+        return _auto_preflight(args)
+    if command == "plan":
+        return _auto_plan(args)
+    if command == "validate":
+        return _auto_validate(args)
+    print("❌ No auto subcommand provided. Use: preflight, plan, or validate")
+    return 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1079,6 +1132,31 @@ def main() -> int:
         help="Full 40-character SHA-1 hash expected for origin/main",
     )
 
+    # auto (D-0B source-only autoloop scaffold)
+    auto_parser = subparsers.add_parser(
+        "auto",
+        help="Source-only autoloop dry-run commands",
+    )
+    auto_subparsers = auto_parser.add_subparsers(dest="auto_command")
+
+    auto_preflight_parser = auto_subparsers.add_parser(
+        "preflight",
+        help="Run read-only source-only autoloop preflight checks",
+    )
+    auto_preflight_parser.add_argument("--spec", required=True, help="Path to JSON spec")
+
+    auto_plan_parser = auto_subparsers.add_parser(
+        "plan",
+        help="Build a non-executed source-only autoloop command plan",
+    )
+    auto_plan_parser.add_argument("--spec", required=True, help="Path to JSON spec")
+
+    auto_validate_parser = auto_subparsers.add_parser(
+        "validate",
+        help="Validate current changes against source-only path guards",
+    )
+    auto_validate_parser.add_argument("--spec", required=True, help="Path to JSON spec")
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1236,6 +1314,7 @@ def main() -> int:
         "chronicler": _dispatch_chronicler,
         "docs": _dispatch_docs,
         "launcher": _dispatch_launcher,
+        "auto": _dispatch_auto,
     }
 
     command_name: str = args.command
