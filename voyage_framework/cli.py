@@ -40,6 +40,7 @@ from voyage_framework.core.auto_loop import (
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.launcher import LauncherConfig, run_dry_run
 from voyage_framework.core.models import SecurityPolicy
+from voyage_framework.core.report_validator import ReportValidatorError, validate_report
 from voyage_framework.core.task_engine import (
     TaskAlreadyExistsError,
     TaskEngine,
@@ -979,6 +980,23 @@ def _dispatch_narrative(args: argparse.Namespace) -> int:
     return 1
 
 
+def _validate_report_command(args: argparse.Namespace) -> int:
+    """Validate a structured report against current Git state."""
+    try:
+        result = validate_report(Path(args.report))
+    except ReportValidatorError as exc:
+        print(
+            json.dumps(
+                {"command": "validate-report", "ok": False, "error": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+
+    print(json.dumps({"command": "validate-report", **result.to_dict()}, indent=2))
+    return 0 if result.ok else 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1248,6 +1266,12 @@ def main() -> int:
         help="Number of consecutive scenarios to check (default: 6)",
     )
 
+    validate_report_parser = subparsers.add_parser(
+        "validate-report",
+        help="Validate a structured report against current Git state",
+    )
+    validate_report_parser.add_argument("--report", required=True, help="Path to JSON report")
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1407,6 +1431,7 @@ def main() -> int:
         "launcher": _dispatch_launcher,
         "auto": _dispatch_auto,
         "narrative": _dispatch_narrative,
+        "validate-report": _validate_report_command,
     }
 
     command_name: str = args.command

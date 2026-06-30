@@ -9,35 +9,11 @@ from __future__ import annotations
 
 import fnmatch
 import json
-import os
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# Git local-env vars set by the pre-commit hook when running inside a worktree.
-# Must be cleared before invoking git against any target repo so that hook env
-# does not override the target's git configuration (which causes pollution of
-# the Framework index when tests create temp repos under the hook).
-_GIT_LOCAL_ENV_VARS: frozenset[str] = frozenset(
-    {
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_COMMON_DIR",
-        "GIT_CONFIG",
-        "GIT_CONFIG_COUNT",
-        "GIT_CONFIG_PARAMETERS",
-        "GIT_DIR",
-        "GIT_GRAFT_FILE",
-        "GIT_IMPLICIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-        "GIT_NO_REPLACE_OBJECTS",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_PREFIX",
-        "GIT_REPLACE_REF_BASE",
-        "GIT_SHALLOW_FILE",
-        "GIT_WORK_TREE",
-    }
-)
+from voyage_framework.core._git_utils import _git, _git_status, _git_stdout
 
 SUPPORTED_SCHEMA = "voyage.auto.spec.v1"
 SUPPORTED_MODE = "source_only"
@@ -475,37 +451,11 @@ def _changed_files(repo: Path) -> list[str]:
     return [_status_path(line) for line in _git_status(repo)]
 
 
-def _git_status(repo: Path) -> list[str]:
-    result = _git(repo, "status", "--porcelain=v1", "-uall")
-    if result.returncode != 0:
-        return []
-    return [line for line in result.stdout.splitlines() if line.strip()]
-
-
 def _status_path(line: str) -> str:
     path = line[3:] if len(line) > 3 else line
     if " -> " in path:
         path = path.split(" -> ", 1)[1]
     return _normalize_repo_path(path.strip().strip('"'))
-
-
-def _git_stdout(repo: Path, *args: str) -> str:
-    result = _git(repo, *args)
-    return result.stdout.strip() if result.returncode == 0 else ""
-
-
-def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    clean_env = {k: v for k, v in os.environ.items() if k not in _GIT_LOCAL_ENV_VARS}
-    return subprocess.run(
-        ["git", *args],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        env=clean_env,
-    )
 
 
 def _all_passed(guards: list[GuardResult]) -> bool:
