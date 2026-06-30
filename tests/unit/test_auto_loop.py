@@ -10,31 +10,7 @@ from typing import Any
 
 import pytest
 
-_GIT_LOCAL_ENV_VARS: frozenset[str] = frozenset(
-    {
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "GIT_COMMON_DIR",
-        "GIT_CONFIG",
-        "GIT_CONFIG_COUNT",
-        "GIT_CONFIG_PARAMETERS",
-        "GIT_DIR",
-        "GIT_GRAFT_FILE",
-        "GIT_IMPLICIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-        "GIT_NO_REPLACE_OBJECTS",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_PREFIX",
-        "GIT_REPLACE_REF_BASE",
-        "GIT_SHALLOW_FILE",
-        "GIT_WORK_TREE",
-    }
-)
-
-
-def _clean_git_env() -> dict[str, str]:
-    return {k: v for k, v in os.environ.items() if k not in _GIT_LOCAL_ENV_VARS}
-
-
+from voyage_framework.core._git_utils import _GIT_LOCAL_ENV_VARS
 from voyage_framework.core.auto_loop import (
     AutoLoopError,
     AutoLoopSpec,
@@ -44,6 +20,10 @@ from voyage_framework.core.auto_loop import (
     run_preflight,
     run_validate,
 )
+
+
+def _clean_git_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _GIT_LOCAL_ENV_VARS}
 
 
 def _git(repo: Path, *args: str) -> None:
