@@ -950,12 +950,32 @@ def _narrative_scene_validate(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _narrative_arc_check(args: argparse.Namespace) -> int:
+    """Check continuity and arc progression across multiple Narrative scenarios."""
+    from voyage_framework.core.narrative_adapter import run_arc_check
+
+    try:
+        result = run_arc_check(Path(args.spec), args.from_id, args.count)
+    except AutoLoopError as exc:
+        print(
+            json.dumps(
+                {"command": "arc-check", "ok": False, "error": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
 def _dispatch_narrative(args: argparse.Namespace) -> int:
     """Dispatcher for Narrative source-only validation commands."""
     command = getattr(args, "narrative_command", None)
     if command == "scene-validate":
         return _narrative_scene_validate(args)
-    print("❌ No narrative subcommand provided. Use: scene-validate")
+    if command == "arc-check":
+        return _narrative_arc_check(args)
+    print("❌ No narrative subcommand provided. Use: scene-validate, arc-check")
     return 1
 
 
@@ -1204,6 +1224,28 @@ def main() -> int:
         "--file",
         required=True,
         help="Relative path to the scenario JSON file inside the target Narrative repo",
+    )
+
+    narrative_arc_check_parser = narrative_subparsers.add_parser(
+        "arc-check",
+        help="Check continuity and arc progression across multiple Narrative scenarios",
+    )
+    narrative_arc_check_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the autoloop JSON spec",
+    )
+    narrative_arc_check_parser.add_argument(
+        "--from-id",
+        required=True,
+        dest="from_id",
+        help="Starting scenario ID (e.g. SC_020)",
+    )
+    narrative_arc_check_parser.add_argument(
+        "--count",
+        type=int,
+        default=6,
+        help="Number of consecutive scenarios to check (default: 6)",
     )
 
     # approve

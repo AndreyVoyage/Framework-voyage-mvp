@@ -153,6 +153,44 @@ def _valid_scene(scene_id: str = "SC_025") -> dict[str, Any]:
     }
 
 
+def _arc_scene_cli(num: int, has_cso: bool = True) -> dict[str, Any]:
+    sc_id = f"SC_{num:03d}"
+    prev_complete = f"sc_{num - 1:03d}_complete"
+    return {
+        "id": sc_id,
+        "version": "1.0",
+        "location": "home",
+        "time": "evening",
+        "archetype": "none",
+        "kira_level_start": "U5",
+        "kira_level_end": "U5",
+        "sergey_level_start": "S5",
+        "sergey_level_end": "S5",
+        "intensity": 6,
+        "risk": 3,
+        "duration_minutes": 25,
+        "prerequisites": [prev_complete],
+        "flags_required": [prev_complete] + (["choice_still_open"] if has_cso else []),
+        "flags_set": [f"sc_{num:03d}_complete"] + (["choice_still_open"] if has_cso else []),
+        "emotional_anchors": [],
+        "symbols": [],
+        "choice_points": [
+            {
+                "id": "CP_1",
+                "timing": "test",
+                "question": "Test?",
+                "branches": [
+                    {"id": "1A", "action": "A", "flags": ["flag_a"]},
+                    {"id": "1B", "action": "B", "flags": ["flag_b"]},
+                ],
+            }
+        ],
+        "visual_scene_id": f"VS_{num:03d}",
+        "content_rating": "PG-13",
+        "safety_notes": "No issues.",
+    }
+
+
 class TestNarrativeCLIHelp:
     def test_narrative_help(self) -> None:
         result = _run(["narrative", "--help"])
@@ -169,6 +207,13 @@ class TestNarrativeCLIHelp:
         assert result.returncode == 0
         assert "--spec" in result.stdout
         assert "--file" in result.stdout
+
+    def test_arc_check_help(self) -> None:
+        result = _run(["narrative", "arc-check", "--help"])
+        assert result.returncode == 0
+        assert "--spec" in result.stdout
+        assert "--from-id" in result.stdout
+        assert "--count" in result.stdout
 
     def test_voyage_help_lists_narrative(self) -> None:
         result = _run(["--help"])
@@ -348,3 +393,107 @@ class TestNarrativeSceneValidateCLI:
             "issues",
         }
         assert required_keys <= set(data.keys())
+
+
+class TestNarrativeArcCheckCLI:
+    def _setup_arc(self, tmp_path: Path, count: int = 3, start: int = 20) -> tuple[Path, Path]:
+        repo = tmp_path / "narrative"
+        head = _init_repo(repo)
+        (repo / "scenarios").mkdir()
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+        for i in range(count):
+            num = start + i
+            (repo / "scenarios" / f"SCENARIO_{num:03d}_TEST.json").write_text(
+                json.dumps(_arc_scene_cli(num)), encoding="utf-8"
+            )
+        return repo, spec_file
+
+    def _arc_args(self, spec_file: Path, from_id: str, count: int) -> list[str]:
+        return [
+            "narrative",
+            "arc-check",
+            "--spec",
+            str(spec_file),
+            "--from-id",
+            from_id,
+            "--count",
+            str(count),
+        ]
+
+    def test_valid_arc_returns_ok_true(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        result = _run(self._arc_args(spec_file, "SC_020", 3))
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["ok"] is True
+        assert data["command"] == "arc-check"
+        assert data["scenarios_checked"] == ["SC_020", "SC_021", "SC_022"]
+
+    def test_recommended_next_id(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        result = _run(self._arc_args(spec_file, "SC_020", 3))
+        data = json.loads(result.stdout)
+        assert data["recommended_next_id"] == "SC_023"
+        assert data["recommended_next_filename_pattern"] == "SCENARIO_023_*.json"
+
+    def test_missing_scenario_returns_ok_false(self, tmp_path: Path) -> None:
+        repo = tmp_path / "narrative"
+        head = _init_repo(repo)
+        (repo / "scenarios").mkdir()
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+        result = _run(self._arc_args(spec_file, "SC_020", 2))
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["ok"] is False
+
+    def test_invalid_from_id_returns_ok_false(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        result = _run(self._arc_args(spec_file, "INVALID", 1))
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["ok"] is False
+
+    def test_spec_not_found_returns_error_json(self, tmp_path: Path) -> None:
+        result = _run(
+            [
+                "narrative",
+                "arc-check",
+                "--spec",
+                str(tmp_path / "nope.json"),
+                "--from-id",
+                "SC_020",
+            ]
+        )
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["ok"] is False
+        assert "error" in data
+
+    def test_output_contains_all_required_keys(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        result = _run(self._arc_args(spec_file, "SC_020", 3))
+        data = json.loads(result.stdout)
+        required = {
+            "command",
+            "ok",
+            "spec_id",
+            "target_repo",
+            "from_id",
+            "count",
+            "scenarios_checked",
+            "files_checked",
+            "predecessor_chain_valid",
+            "choice_still_open_consistent",
+            "flag_duplicates",
+            "schema_stable",
+            "branch_pattern_valid",
+            "intensity_curve",
+            "arc_flags_progression",
+            "recommended_next_id",
+            "recommended_next_filename_pattern",
+            "recommended_flags_required",
+            "issues",
+        }
+        assert required <= set(data.keys())

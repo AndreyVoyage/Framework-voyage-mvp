@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 from voyage_framework.core.auto_loop import AutoLoopError
-from voyage_framework.core.narrative_adapter import validate_scene
+from voyage_framework.core.narrative_adapter import run_arc_check, validate_scene
 
 _GIT_LOCAL_ENV_VARS: frozenset[str] = frozenset(
     {
@@ -349,3 +349,210 @@ class TestValidateScene:
         result = validate_scene(spec_file, "scenarios/SCENARIO_100_TEST.json")
 
         assert result.schema_fields_valid is True
+
+
+def _arc_scene(num: int, has_cso: bool = True) -> dict[str, Any]:
+    sc_id = f"SC_{num:03d}"
+    prev_complete = f"sc_{num - 1:03d}_complete"
+    return {
+        "id": sc_id,
+        "version": "1.0",
+        "location": "home",
+        "time": "evening",
+        "archetype": "none",
+        "kira_level_start": "U5",
+        "kira_level_end": "U5",
+        "sergey_level_start": "S5",
+        "sergey_level_end": "S5",
+        "intensity": 6,
+        "risk": 3,
+        "duration_minutes": 25,
+        "prerequisites": [prev_complete],
+        "flags_required": [prev_complete] + (["choice_still_open"] if has_cso else []),
+        "flags_set": [f"sc_{num:03d}_complete"] + (["choice_still_open"] if has_cso else []),
+        "emotional_anchors": [],
+        "symbols": [],
+        "choice_points": [
+            {
+                "id": "CP_1",
+                "timing": "test",
+                "question": "Test?",
+                "branches": [
+                    {"id": "1A", "action": "A", "flags": ["flag_a"]},
+                    {"id": "1B", "action": "B", "flags": ["flag_b"]},
+                ],
+            }
+        ],
+        "visual_scene_id": f"VS_{num:03d}",
+        "content_rating": "PG-13",
+        "safety_notes": "No issues.",
+    }
+
+
+def _write_arc(repo: Path, scenes: list[dict[str, Any]], start_num: int = 20) -> None:
+    d = repo / "scenarios"
+    d.mkdir(exist_ok=True)
+    for i, scene in enumerate(scenes):
+        num = start_num + i
+        (d / f"SCENARIO_{num:03d}_TEST.json").write_text(json.dumps(scene), encoding="utf-8")
+
+
+class TestRunArcCheck:
+    def _setup(self, tmp_path: Path) -> tuple[Path, Path]:
+        repo = tmp_path / "narrative"
+        head = _init_repo(repo)
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+        return repo, spec_file
+
+    def test_valid_arc_passes(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        scenes = [_arc_scene(20 + i) for i in range(3)]
+        _write_arc(repo, scenes, start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=3)
+
+        assert result.ok is True
+        assert result.scenarios_checked == ["SC_020", "SC_021", "SC_022"]
+        assert result.predecessor_chain_valid is True
+        assert result.choice_still_open_consistent is True
+        assert result.flag_duplicates == []
+        assert result.schema_stable is True
+        assert result.branch_pattern_valid is True
+        assert result.issues == []
+
+    def test_recommended_next_id(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        scenes = [_arc_scene(20 + i) for i in range(3)]
+        _write_arc(repo, scenes, start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=3)
+
+        assert result.recommended_next_id == "SC_023"
+        assert result.recommended_next_filename_pattern == "SCENARIO_023_*.json"
+        assert "sc_022_complete" in result.recommended_flags_required
+        assert "choice_still_open" in result.recommended_flags_required
+
+    def test_missing_file_fails(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        (repo / "scenarios").mkdir(exist_ok=True)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert result.ok is False
+        assert any("SC_020" in issue for issue in result.issues)
+
+    def test_invalid_from_id_fails(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+
+        result = run_arc_check(spec_file, "INVALID", count=1)
+
+        assert result.ok is False
+        assert any("SC_NNN" in issue for issue in result.issues)
+
+    def test_predecessor_chain_broken(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        s0 = _arc_scene(20)
+        s1 = _arc_scene(21)
+        s1["flags_required"] = ["choice_still_open"]  # remove sc_020_complete
+        _write_arc(repo, [s0, s1], start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert result.predecessor_chain_valid is False
+        assert result.ok is False
+
+    def test_choice_still_open_missing(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        s0 = _arc_scene(20, has_cso=True)
+        s1 = _arc_scene(21, has_cso=False)  # breaks consistency
+        _write_arc(repo, [s0, s1], start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert result.choice_still_open_consistent is False
+        assert result.ok is False
+
+    def test_duplicate_flags_detected(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        s0 = _arc_scene(20)
+        s1 = _arc_scene(21)
+        s0["flags_set"] = ["sc_020_complete", "shared_flag", "choice_still_open"]
+        s1["flags_set"] = ["sc_021_complete", "shared_flag", "choice_still_open"]
+        _write_arc(repo, [s0, s1], start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert "shared_flag" in result.flag_duplicates
+        assert result.ok is False
+
+    def test_schema_unstable(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        s0 = _arc_scene(20)
+        s1 = _arc_scene(21)
+        s1["extra_field"] = "unexpected"
+        _write_arc(repo, [s0, s1], start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert result.schema_stable is False
+        assert result.ok is False
+
+    def test_branch_pattern_too_few_branches(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        s0 = _arc_scene(20)
+        s0["choice_points"][0]["branches"] = [{"id": "1A", "flags": ["f"]}]
+        _write_arc(repo, [s0], start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=1)
+
+        assert result.branch_pattern_valid is False
+        assert result.ok is False
+
+    def test_intensity_curve_populated(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        scenes = [_arc_scene(20 + i) for i in range(2)]
+        _write_arc(repo, scenes, start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+
+        assert len(result.intensity_curve) == 2
+        assert result.intensity_curve[0]["id"] == "SC_020"
+        assert "intensity" in result.intensity_curve[0]
+        assert "risk" in result.intensity_curve[0]
+
+    def test_to_dict_has_all_required_keys(self, tmp_path: Path) -> None:
+        repo, spec_file = self._setup(tmp_path)
+        scenes = [_arc_scene(20 + i) for i in range(2)]
+        _write_arc(repo, scenes, start_num=20)
+
+        result = run_arc_check(spec_file, "SC_020", count=2)
+        d = result.to_dict()
+
+        required = {
+            "command",
+            "ok",
+            "spec_id",
+            "target_repo",
+            "from_id",
+            "count",
+            "scenarios_checked",
+            "files_checked",
+            "predecessor_chain_valid",
+            "choice_still_open_consistent",
+            "flag_duplicates",
+            "schema_stable",
+            "branch_pattern_valid",
+            "intensity_curve",
+            "arc_flags_progression",
+            "recommended_next_id",
+            "recommended_next_filename_pattern",
+            "recommended_flags_required",
+            "issues",
+        }
+        assert required <= set(d.keys())
+        assert d["command"] == "arc-check"
+
+    def test_spec_not_found_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(AutoLoopError, match="spec file not found"):
+            run_arc_check(tmp_path / "nonexistent.json", "SC_020")
