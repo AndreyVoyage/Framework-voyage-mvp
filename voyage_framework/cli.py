@@ -932,6 +932,33 @@ def _dispatch_auto(args: argparse.Namespace) -> int:
     return 1
 
 
+def _narrative_scene_validate(args: argparse.Namespace) -> int:
+    """Validate a Narrative scenario JSON file against structural and path guards."""
+    from voyage_framework.core.narrative_adapter import validate_scene
+
+    try:
+        result = validate_scene(Path(args.spec), args.file)
+    except AutoLoopError as exc:
+        print(
+            json.dumps(
+                {"command": "scene-validate", "ok": False, "error": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def _dispatch_narrative(args: argparse.Namespace) -> int:
+    """Dispatcher for Narrative source-only validation commands."""
+    command = getattr(args, "narrative_command", None)
+    if command == "scene-validate":
+        return _narrative_scene_validate(args)
+    print("❌ No narrative subcommand provided. Use: scene-validate")
+    return 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1157,6 +1184,28 @@ def main() -> int:
     )
     auto_validate_parser.add_argument("--spec", required=True, help="Path to JSON spec")
 
+    # narrative (D0D-B Narrative source-only validation)
+    narrative_parser = subparsers.add_parser(
+        "narrative",
+        help="Narrative source-only validation commands",
+    )
+    narrative_subparsers = narrative_parser.add_subparsers(dest="narrative_command")
+
+    narrative_scene_validate_parser = narrative_subparsers.add_parser(
+        "scene-validate",
+        help="Validate a Narrative scenario JSON file against structural and path guards",
+    )
+    narrative_scene_validate_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the autoloop JSON spec",
+    )
+    narrative_scene_validate_parser.add_argument(
+        "--file",
+        required=True,
+        help="Relative path to the scenario JSON file inside the target Narrative repo",
+    )
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1315,6 +1364,7 @@ def main() -> int:
         "docs": _dispatch_docs,
         "launcher": _dispatch_launcher,
         "auto": _dispatch_auto,
+        "narrative": _dispatch_narrative,
     }
 
     command_name: str = args.command
