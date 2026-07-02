@@ -20,8 +20,10 @@
 | F1-C-A | Test performance audit/unblock | DONE | Removed stale `.test-tmp-perf/`; ruff/mypy/collect clean; measured slow auto-loop and narrative suites; recommended pre-commit policy fix first. |
 | F1-C-B | Pre-commit smoke-test policy fix | DONE | Commit `cc23e5bfa73834724d49e6737ca218cbc32876f4` replaced full pre-commit pytest with the smoke pytest set; warning: it temporarily introduced machine-specific absolute venv Python paths in `.pre-commit-config.yaml`, addressed by F1-C-B2. |
 | F1-C-B2-A | Pre-commit portability audit | DONE | Recommended repo-local PowerShell wrapper `scripts/precommit/run_python.ps1` to remove `C:/DEV/...` from active pre-commit config while preserving Windows compatibility and project venv usage. |
-| F1-C-B2-B | Pre-commit portable launcher fix | IN PROGRESS | `.pre-commit-config.yaml` will use repo-local wrapper instead of machine-specific absolute venv path. Commit pending. |
-| F1-C-C | Test fixture optimization | PLANNED | Cache/scope real git repo setup; target <120s narrative suite. |
+| F1-C-B2-B | Pre-commit portable launcher fix | DONE | `.pre-commit-config.yaml` uses repo-local wrapper (`scripts/precommit/run_python.ps1`) instead of machine-specific absolute venv path. Committed and pushed as `ec912ce1bad074b3f56b397f4e2f4339c1613eae`. |
+| F1-C-C-A | Test git-setup optimization planning | DONE | Found slow tests repeatedly create real git repos and call expensive `git fetch`/`git config` subprocesses per test; recommended low-risk fetch->update-ref replacement before any shared fixture/copytree refactor. |
+| F1-C-C-B1 | Low-risk git test setup optimization | IN PROGRESS | Replace local test `git fetch origin "+main:refs/remotes/origin/main"` with `git update-ref refs/remotes/origin/main HEAD`; reduce repeated `git config user.email`/`user.name` subprocesses via `git -c user.email=... -c user.name=... commit`. Shared fixture/copytree architecture deferred. Commit pending. |
+| F1-C-C | Test fixture optimization | PLANNED | Shared session/module fixtures + copytree template repo, decided after F1-C-C-B1 timing results. |
 | F2 | Generic repo-control adapter | DEFERRED | Until docs are written (D-005). |
 | F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
@@ -49,4 +51,6 @@
 | F1-C-A | yes | - | - | - | - |
 | F1-C-B | yes | yes (pre-commit) | ok:true | `cc23e5b` | yes |
 | F1-C-B2-A | yes | - | - | - | - |
-| F1-C-B2-B | yes | yes (pre-commit) | pending | pending | pending |
+| F1-C-B2-B | yes | yes (pre-commit) | ok:true | `ec912ce` | yes |
+| F1-C-C-A | yes | - | - | - | - |
+| F1-C-C-B1 | yes | yes (pre-commit) | pending | pending | pending |

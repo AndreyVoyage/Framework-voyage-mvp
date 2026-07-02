@@ -64,13 +64,20 @@ def _git(repo: Path, *args: str) -> None:
 def _init_repo(path: Path) -> str:
     path.mkdir(parents=True)
     _git(path, "init", "--initial-branch=main")
-    _git(path, "config", "user.email", "test@example.com")
-    _git(path, "config", "user.name", "Test User")
     (path / "README.md").write_text("repo\n", encoding="utf-8")
     _git(path, "add", "README.md")
-    _git(path, "commit", "-m", "init")
+    _git(
+        path,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test User",
+        "commit",
+        "-m",
+        "init",
+    )
     _git(path, "remote", "add", "origin", str(path))
-    _git(path, "fetch", "origin", "+main:refs/remotes/origin/main")
+    _git(path, "update-ref", "refs/remotes/origin/main", "HEAD")
     return subprocess.check_output(
         ["git", "rev-parse", "HEAD"],
         cwd=path,
