@@ -3,8 +3,8 @@
 > Living status of the Framework control-loop / trust-engine track. Target path in repo: `docs/framework/FRAMEWORK_PROGRESS.md`.
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
-## Snapshot (2026-06-29)
-- Framework HEAD / origin/main: `cc23e5bfa73834724d49e6737ca218cbc32876f4` (baseline before F1-C-B2-B portability fix).
+## Snapshot (2026-07-02)
+- Framework HEAD / origin/main: `3f419575a2fb700aad9b2fcb34a0be219bd7d2e7` (baseline before F1-C-D-B flaky timestamp fix).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -22,8 +22,10 @@
 | F1-C-B2-A | Pre-commit portability audit | DONE | Recommended repo-local PowerShell wrapper `scripts/precommit/run_python.ps1` to remove `C:/DEV/...` from active pre-commit config while preserving Windows compatibility and project venv usage. |
 | F1-C-B2-B | Pre-commit portable launcher fix | DONE | `.pre-commit-config.yaml` uses repo-local wrapper (`scripts/precommit/run_python.ps1`) instead of machine-specific absolute venv path. Committed and pushed as `ec912ce1bad074b3f56b397f4e2f4339c1613eae`. |
 | F1-C-C-A | Test git-setup optimization planning | DONE | Found slow tests repeatedly create real git repos and call expensive `git fetch`/`git config` subprocesses per test; recommended low-risk fetch->update-ref replacement before any shared fixture/copytree refactor. |
-| F1-C-C-B1 | Low-risk git test setup optimization | IN PROGRESS | Replace local test `git fetch origin "+main:refs/remotes/origin/main"` with `git update-ref refs/remotes/origin/main HEAD`; reduce repeated `git config user.email`/`user.name` subprocesses via `git -c user.email=... -c user.name=... commit`. Shared fixture/copytree architecture deferred. Commit pending. |
-| F1-C-C | Test fixture optimization | PLANNED | Shared session/module fixtures + copytree template repo, decided after F1-C-C-B1 timing results. |
+| F1-C-C-B1 | Low-risk git test setup optimization | DONE | Replaced local test `git fetch origin "+main:refs/remotes/origin/main"` with `git update-ref refs/remotes/origin/main HEAD`; reduced repeated `git config user.email`/`user.name` subprocesses via `git -c user.email=... -c user.name=... commit`. Committed and pushed as `3f419575a2fb700aad9b2fcb34a0be219bd7d2e7`; full pytest improved from roughly 812s to 449.15s. Shared fixture/copytree optimization deferred as F1-C-C-B2 since B1 already delivered a large low-risk gain. |
+| F1-C-C-B2 | Shared fixture/copytree test optimization | PLANNED | Session/module-scoped fixtures + copytree template repo; only if further speedup is still wanted after F1-C-C-B1's gain. |
+| F1-C-D-A | Flaky timestamp test audit | DONE | Root cause: real clock granularity (~1ms tick on this machine) can produce equal `_now()` timestamps between `create_from_spec` and `transition`; the test was flaky, not `TaskEngine` logic. 20 runs / 1 failure observed. Recommended test-only deterministic clock seam via monkeypatch. |
+| F1-C-D-B | Flaky timestamp test fix | IN PROGRESS | Fix: test-only deterministic clock via `monkeypatch.setattr(engine, "_now", ...)` in `test_updated_at_changes_on_transition`. Rejected: `time.sleep()` (still flaky under scheduler jitter, slows suite), loosening assertion to `>=` (defeats test intent), production monotonic-timestamp change (contract-level decision, out of scope for this stabilization fix). Commit pending. |
 | F2 | Generic repo-control adapter | DEFERRED | Until docs are written (D-005). |
 | F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
@@ -34,8 +36,8 @@
 
 ## Known debts
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
-- Narrative adapter tests ~470s (F1 perf).
-- Flaky timestamp assertion in `tests/unit/test_task_engine.py` remains a known optional separate fix.
+- Narrative adapter tests ~470s (F1 perf); improved via F1-C-C-B1, further gains deferred to F1-C-C-B2 if still wanted.
+- ~~Flaky timestamp assertion in `tests/unit/test_task_engine.py` remains a known optional separate fix.~~ Addressed in F1-C-D-B (test-only deterministic clock seam).
 - Validator forbidden-paths hardcoded (`FORBIDDEN_BY_ROLE`) -> spec-driven in F3.
 - Validator does not check changed-files vs a named `auto_commit` -> F3.
 
@@ -53,4 +55,6 @@
 | F1-C-B2-A | yes | - | - | - | - |
 | F1-C-B2-B | yes | yes (pre-commit) | ok:true | `ec912ce` | yes |
 | F1-C-C-A | yes | - | - | - | - |
-| F1-C-C-B1 | yes | yes (pre-commit) | pending | pending | pending |
+| F1-C-C-B1 | yes | yes (pre-commit) | ok:true | `3f41957` | yes |
+| F1-C-D-A | yes | - | - | - | - |
+| F1-C-D-B | yes | yes (pre-commit) | pending | pending | pending |

@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -384,8 +384,13 @@ class TestTimestampRules:
         tmp_engine.create_from_spec(sample_spec)
         return tmp_engine
 
-    def test_updated_at_changes_on_transition(self, engine_with_task: TaskEngine) -> None:
+    def test_updated_at_changes_on_transition(
+        self, engine_with_task: TaskEngine, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         before = engine_with_task.get("VF-001").updated_at
+        # Coarse system clock ticks can make two quick _now() calls equal;
+        # pin the transition's timestamp strictly after `before` deterministically.
+        monkeypatch.setattr(engine_with_task, "_now", lambda: before + timedelta(milliseconds=1))
         engine_with_task.start("VF-001")
         after = engine_with_task.get("VF-001").updated_at
         assert after > before
