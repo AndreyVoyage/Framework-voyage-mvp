@@ -11,7 +11,18 @@ from typing import Any
 import pytest
 
 from voyage_framework.core.auto_loop import AutoLoopError
-from voyage_framework.core.narrative_adapter import run_arc_check, validate_scene
+from voyage_framework.core.narrative_adapter import (
+    NarrativeRepoControlAdapter,
+    run_arc_check,
+    validate_scene,
+)
+from voyage_framework.core.repo_control_adapter import (
+    RepoAuditResult,
+    RepoControlAdapter,
+    RepoPreviewResult,
+    RepoStatusResult,
+    RepoValidationResult,
+)
 
 _GIT_LOCAL_ENV_VARS: frozenset[str] = frozenset(
     {
@@ -563,3 +574,95 @@ class TestRunArcCheck:
     def test_spec_not_found_raises(self, tmp_path: Path) -> None:
         with pytest.raises(AutoLoopError, match="spec file not found"):
             run_arc_check(tmp_path / "nonexistent.json", "SC_020")
+
+
+class TestNarrativeRepoControlAdapter:
+    def _setup_scene(self, tmp_path: Path) -> tuple[Path, Path]:
+        repo = tmp_path / "narrative"
+        head = _init_repo(repo)
+        (repo / "scenarios").mkdir()
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+        scene_file = repo / "scenarios" / "SCENARIO_025_TEST.json"
+        scene_file.write_text(json.dumps(_valid_scene()), encoding="utf-8")
+        return repo, spec_file
+
+    def _setup_arc(self, tmp_path: Path) -> tuple[Path, Path]:
+        repo = tmp_path / "narrative"
+        head = _init_repo(repo)
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+        scenes = [_arc_scene(20 + i) for i in range(3)]
+        _write_arc(repo, scenes, start_num=20)
+        return repo, spec_file
+
+    def test_is_repo_control_adapter(self) -> None:
+        adapter = NarrativeRepoControlAdapter()
+        assert isinstance(adapter, RepoControlAdapter)
+
+    def test_status_returns_status_result(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_scene(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.status(spec_file)
+
+        assert isinstance(result, RepoStatusResult)
+        assert result.adapter == "narrative"
+        assert json.dumps(result.to_dict())
+
+    def test_validate_with_target_preserves_validate_scene_behavior(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_scene(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.validate(spec_file, target="scenarios/SCENARIO_025_TEST.json")
+
+        assert isinstance(result, RepoValidationResult)
+        assert result.ok is True
+        assert result.target == "scenarios/SCENARIO_025_TEST.json"
+        assert json.dumps(result.to_dict())
+
+    def test_validate_without_target_fails(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_scene(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.validate(spec_file)
+
+        assert result.ok is False
+        assert result.target is None
+        assert len(result.issues) > 0
+
+    def test_audit_with_target_preserves_run_arc_check_behavior(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.audit(spec_file, target="SC_020", count=3)
+
+        assert isinstance(result, RepoAuditResult)
+        assert result.ok is True
+        assert result.target == "SC_020"
+        assert json.dumps(result.to_dict())
+
+    def test_audit_without_target_fails(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_arc(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.audit(spec_file)
+
+        assert result.ok is False
+        assert result.target is None
+        assert len(result.issues) > 0
+
+    def test_preview_returns_preview_result(self, tmp_path: Path) -> None:
+        _, spec_file = self._setup_scene(tmp_path)
+        adapter = NarrativeRepoControlAdapter()
+
+        result = adapter.preview(spec_file)
+
+        assert isinstance(result, RepoPreviewResult)
+        assert result.actions == (
+            "repo.status",
+            "repo.validate",
+            "repo.audit",
+            "repo.preview",
+        )
+        assert json.dumps(result.to_dict())

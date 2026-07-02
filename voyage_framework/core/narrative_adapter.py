@@ -12,7 +12,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from voyage_framework.core.auto_loop import AutoLoopError, AutoLoopSpec, run_validate
+from voyage_framework.core.auto_loop import (
+    AutoLoopError,
+    AutoLoopSpec,
+    run_plan,
+    run_preflight,
+    run_validate,
+)
+from voyage_framework.core.repo_control_adapter import (
+    RepoAuditResult,
+    RepoControlAdapter,
+    RepoPreviewResult,
+    RepoStatusResult,
+    RepoValidationResult,
+)
 
 _CARRY_FLAGS: frozenset[str] = frozenset({"choice_still_open"})
 _SC_NUM_RE = re.compile(r"^SC_(\d{3,})$")
@@ -518,3 +531,102 @@ def _fail_arc(spec: AutoLoopSpec, from_id: str, count: int, issues: list[str]) -
         issues=issues,
         ok=False,
     )
+
+
+class NarrativeRepoControlAdapter(RepoControlAdapter):
+    """First concrete RepoControlAdapter implementation, wrapping the
+    existing read-only Narrative source-only validation functions.
+
+    Wraps validate_scene/run_arc_check/run_preflight/run_plan unchanged;
+    does not alter their public behavior.
+    """
+
+    def status(self, spec_path: str | Path) -> RepoStatusResult:
+        spec = Path(spec_path)
+        ok, report = run_preflight(spec)
+        gates: list[dict[str, Any]] = report.get("gates", [])
+        issues = tuple(str(gate["detail"]) for gate in gates if not gate["passed"])
+        passed_count = sum(1 for gate in gates if gate["passed"])
+        summary = f"{passed_count}/{len(gates)} guards passed"
+        repo_path = report.get("target_repo")
+        return RepoStatusResult(
+            command="repo.status",
+            ok=ok,
+            adapter="narrative",
+            repo_path=str(repo_path) if repo_path is not None else None,
+            summary=summary,
+            issues=issues,
+            details=report,
+        )
+
+    def validate(self, spec_path: str | Path, target: str | None = None) -> RepoValidationResult:
+        if target is None:
+            return RepoValidationResult(
+                command="repo.validate",
+                ok=False,
+                adapter="narrative",
+                target=None,
+                issues=("target (scene/file relative path) is required for narrative validate",),
+                details={},
+            )
+        spec = Path(spec_path)
+        result = validate_scene(spec, target)
+        return RepoValidationResult(
+            command="repo.validate",
+            ok=result.ok,
+            adapter="narrative",
+            target=target,
+            issues=tuple(result.issues),
+            details=result.to_dict(),
+        )
+
+    def audit(
+        self,
+        spec_path: str | Path,
+        target: str | None = None,
+        **options: object,
+    ) -> RepoAuditResult:
+        from_id = target
+        if from_id is None:
+            options_from_id = options.get("from_id")
+            if isinstance(options_from_id, str):
+                from_id = options_from_id
+        if from_id is None:
+            return RepoAuditResult(
+                command="repo.audit",
+                ok=False,
+                adapter="narrative",
+                target=None,
+                issues=("target (from_id) is required for narrative audit",),
+                details={},
+            )
+        count = 6
+        options_count = options.get("count")
+        if isinstance(options_count, int):
+            count = options_count
+        spec = Path(spec_path)
+        result = run_arc_check(spec, from_id, count=count)
+        return RepoAuditResult(
+            command="repo.audit",
+            ok=result.ok,
+            adapter="narrative",
+            target=from_id,
+            issues=tuple(result.issues),
+            details=result.to_dict(),
+        )
+
+    def preview(self, spec_path: str | Path) -> RepoPreviewResult:
+        spec = Path(spec_path)
+        ok, report = run_plan(spec)
+        plan: dict[str, Any] = report.get("plan", {})
+        gates: list[dict[str, Any]] = plan.get("gates", [])
+        issues = tuple(str(gate["detail"]) for gate in gates if not gate["passed"])
+        return RepoPreviewResult(
+            command="repo.preview",
+            ok=ok,
+            adapter="narrative",
+            summary="plan generated; commands not executed",
+            actions=("repo.status", "repo.validate", "repo.audit", "repo.preview"),
+            issues=issues,
+            details=report,
+        )
