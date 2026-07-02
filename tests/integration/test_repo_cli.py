@@ -237,6 +237,41 @@ def _setup_arc(tmp_path: Path) -> Path:
     return spec_file
 
 
+class TestRepoCLIHelp:
+    def test_top_level_help_lists_repo(self) -> None:
+        result = _run(["--help"])
+        assert result.returncode == 0
+        assert "repo" in result.stdout
+
+    def test_repo_help_mentions_adapter_and_narrative(self) -> None:
+        result = _run(["repo", "--help"])
+        assert result.returncode == 0
+        assert "RepoControlAdapter" in result.stdout
+        assert "narrative" in result.stdout.lower()
+
+    def test_repo_status_help_mentions_adapter_and_spec(self) -> None:
+        result = _run(["repo", "status", "--help"])
+        assert result.returncode == 0
+        assert "--adapter" in result.stdout
+        assert "--spec" in result.stdout
+
+    def test_repo_validate_help_mentions_target(self) -> None:
+        result = _run(["repo", "validate", "--help"])
+        assert result.returncode == 0
+        assert "--target" in result.stdout
+
+    def test_repo_audit_help_mentions_count(self) -> None:
+        result = _run(["repo", "audit", "--help"])
+        assert result.returncode == 0
+        assert "--count" in result.stdout
+
+    def test_narrative_help_mentions_compatibility(self) -> None:
+        result = _run(["narrative", "--help"])
+        assert result.returncode == 0
+        assert "compatibility" in result.stdout.lower()
+        assert "repo" in result.stdout.lower()
+
+
 class TestRepoStatusCLI:
     def test_status_returns_ok_true(self, tmp_path: Path) -> None:
         spec_file = _setup_clean(tmp_path)

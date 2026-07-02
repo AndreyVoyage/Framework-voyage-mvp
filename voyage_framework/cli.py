@@ -1356,6 +1356,11 @@ def main() -> int:
     narrative_parser = subparsers.add_parser(
         "narrative",
         help="Narrative source-only validation commands",
+        description=(
+            "Narrative-specific compatibility commands (source-only validation). "
+            "These remain available as-is. Prefer `voyage repo ... --adapter narrative` "
+            "for the generic repo-control interface."
+        ),
     )
     narrative_subparsers = narrative_parser.add_subparsers(dest="narrative_command")
 
@@ -1400,6 +1405,12 @@ def main() -> int:
     repo_parser = subparsers.add_parser(
         "repo",
         help="Generic repo-control adapter commands (status/validate/audit/preview)",
+        description=(
+            "Generic repo-control commands backed by RepoControlAdapter implementations. "
+            "Currently supported adapter: narrative. Select it with --adapter narrative. "
+            "No adapter auto-detection yet. See also: `voyage narrative ...` for the "
+            "original Narrative-specific compatibility commands."
+        ),
     )
     repo_subparsers = repo_parser.add_subparsers(dest="repo_command")
 
