@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-02)
-- Framework HEAD / origin/main: `b632f5742dc3691a4310253be077cbf5d90022f1` (F1 stabilization closed; baseline before F1-D Architecture Boundary Audit).
+- Framework HEAD / origin/main: `01ef2811aa3ed66c4d1bd9ae9302722365c9886a` (F1 stabilization + F1-D Architecture Boundary Audit closed; baseline before F2-A-B1).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -27,7 +27,10 @@
 | F1-C-D-A | Flaky timestamp test audit | DONE | Root cause: real clock granularity (~1ms tick on this machine) can produce equal `_now()` timestamps between `create_from_spec` and `transition`; the test was flaky, not `TaskEngine` logic. 20 runs / 1 failure observed. Recommended test-only deterministic clock seam via monkeypatch. |
 | F1-C-D-B | Flaky timestamp test fix | DONE | Flaky timestamp test stabilized with test-local monkeypatched deterministic `_now` (`monkeypatch.setattr(engine, "_now", ...)` in `test_updated_at_changes_on_transition`); production `TaskEngine` untouched. Rejected: `time.sleep()` (still flaky under scheduler jitter, slows suite), loosening assertion to `>=` (defeats test intent), production monotonic-timestamp change (contract-level decision, out of scope for this stabilization fix). Committed and pushed as `b632f5742dc3691a4310253be077cbf5d90022f1`. |
 | F1 stabilization | F1-C track closeout | DONE | F1-A, F1-B, F1-C-B, F1-C-B2, F1-C-C-B1, F1-C-D-B all closed. Final closeout gate (F1-C-E): ruff pass, format pass, mypy pass, pre-commit smoke pass, full pytest 665 passed in 490.21s. F1-C-C-B2 shared fixture/copytree optimization remains deferred (not cancelled). Next planned step: F1-D Architecture Boundary Audit before F2 (not started). |
-| F2 | Generic repo-control adapter | DEFERRED | Until docs are written (D-005). |
+| F1-D-A | Architecture Boundary Audit | DONE | Read-only audit: no P0 findings; core imports nothing Narrative-specific outside `narrative_adapter.py` itself and the data-only `FORBIDDEN_BY_ROLE["narrative"]` entry; CLI narrative dispatch lazy-imported; F1-D-B not needed. Verdict A. |
+| F2-A-A | RepoControlAdapter contract planning | DONE | Read-only planning: existing `adapter_protocols.py`/`adapter_contract.py` are AI-agent task-invocation concepts, not repo-control; a separate `repo_control_adapter.py` contract was chosen instead of reusing them. Mapped `auto_loop.run_preflight`/`run_plan` to generic `status`/`preview`, and `narrative_adapter.validate_scene`/`run_arc_check` to `validate`/`audit` for a future Narrative implementation. Verdict A. |
+| F2-A-B1 | Generic RepoControlAdapter contract + boundary tests | IN PROGRESS | Purely additive: `repo_control_adapter.py` (contract + 4 result dataclasses), `test_repo_control_adapter.py`, `test_architecture_boundaries.py`. No Narrative wrapper yet; no CLI changes; `narrative_adapter.py` untouched. Next: F2-A-C Narrative implementation wrapper. Commit pending. |
+| F2 | Generic repo-control adapter | IN PROGRESS | F2-A-A planning done; F2-A-B1 generic contract landing now; F2-A-C (Narrative wrapper) and CLI evolution planned next. |
 | F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
@@ -59,4 +62,7 @@
 | F1-C-C-B1 | yes | yes (pre-commit) | ok:true | `3f41957` | yes |
 | F1-C-D-A | yes | - | - | - | - |
 | F1-C-D-B | yes | yes (pre-commit) | ok:true | `b632f57` | yes |
-| F1-C-E | yes | yes (pre-commit) | pending | pending | pending |
+| F1-C-E | yes | yes (pre-commit) | ok:true | `01ef281` | yes |
+| F1-D-A | yes | - | - | - | - |
+| F2-A-A | yes | - | - | - | - |
+| F2-A-B1 | yes | yes (pre-commit) | pending | pending | pending |
