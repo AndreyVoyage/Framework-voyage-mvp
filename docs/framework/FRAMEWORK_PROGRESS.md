@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-02)
-- Framework HEAD / origin/main: `3f419575a2fb700aad9b2fcb34a0be219bd7d2e7` (baseline before F1-C-D-B flaky timestamp fix).
+- Framework HEAD / origin/main: `b632f5742dc3691a4310253be077cbf5d90022f1` (F1 stabilization closed; baseline before F1-D Architecture Boundary Audit).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -25,7 +25,8 @@
 | F1-C-C-B1 | Low-risk git test setup optimization | DONE | Replaced local test `git fetch origin "+main:refs/remotes/origin/main"` with `git update-ref refs/remotes/origin/main HEAD`; reduced repeated `git config user.email`/`user.name` subprocesses via `git -c user.email=... -c user.name=... commit`. Committed and pushed as `3f419575a2fb700aad9b2fcb34a0be219bd7d2e7`; full pytest improved from roughly 812s to 449.15s. Shared fixture/copytree optimization deferred as F1-C-C-B2 since B1 already delivered a large low-risk gain. |
 | F1-C-C-B2 | Shared fixture/copytree test optimization | PLANNED | Session/module-scoped fixtures + copytree template repo; only if further speedup is still wanted after F1-C-C-B1's gain. |
 | F1-C-D-A | Flaky timestamp test audit | DONE | Root cause: real clock granularity (~1ms tick on this machine) can produce equal `_now()` timestamps between `create_from_spec` and `transition`; the test was flaky, not `TaskEngine` logic. 20 runs / 1 failure observed. Recommended test-only deterministic clock seam via monkeypatch. |
-| F1-C-D-B | Flaky timestamp test fix | IN PROGRESS | Fix: test-only deterministic clock via `monkeypatch.setattr(engine, "_now", ...)` in `test_updated_at_changes_on_transition`. Rejected: `time.sleep()` (still flaky under scheduler jitter, slows suite), loosening assertion to `>=` (defeats test intent), production monotonic-timestamp change (contract-level decision, out of scope for this stabilization fix). Commit pending. |
+| F1-C-D-B | Flaky timestamp test fix | DONE | Flaky timestamp test stabilized with test-local monkeypatched deterministic `_now` (`monkeypatch.setattr(engine, "_now", ...)` in `test_updated_at_changes_on_transition`); production `TaskEngine` untouched. Rejected: `time.sleep()` (still flaky under scheduler jitter, slows suite), loosening assertion to `>=` (defeats test intent), production monotonic-timestamp change (contract-level decision, out of scope for this stabilization fix). Committed and pushed as `b632f5742dc3691a4310253be077cbf5d90022f1`. |
+| F1 stabilization | F1-C track closeout | DONE | F1-A, F1-B, F1-C-B, F1-C-B2, F1-C-C-B1, F1-C-D-B all closed. Final closeout gate (F1-C-E): ruff pass, format pass, mypy pass, pre-commit smoke pass, full pytest 665 passed in 490.21s. F1-C-C-B2 shared fixture/copytree optimization remains deferred (not cancelled). Next planned step: F1-D Architecture Boundary Audit before F2 (not started). |
 | F2 | Generic repo-control adapter | DEFERRED | Until docs are written (D-005). |
 | F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
@@ -57,4 +58,5 @@
 | F1-C-C-A | yes | - | - | - | - |
 | F1-C-C-B1 | yes | yes (pre-commit) | ok:true | `3f41957` | yes |
 | F1-C-D-A | yes | - | - | - | - |
-| F1-C-D-B | yes | yes (pre-commit) | pending | pending | pending |
+| F1-C-D-B | yes | yes (pre-commit) | ok:true | `b632f57` | yes |
+| F1-C-E | yes | yes (pre-commit) | pending | pending | pending |
