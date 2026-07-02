@@ -3,28 +3,28 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: C:/DEV/FRAMEWORK/Framework-voyage-mvp/.venv/Scripts/python.exe -m ruff check voyage_framework
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/precommit/run_python.ps1 ruff check .
         language: system
         types: [python]
         pass_filenames: false
 
       - id: ruff-format
         name: ruff format
-        entry: C:/DEV/FRAMEWORK/Framework-voyage-mvp/.venv/Scripts/python.exe -m ruff format --check voyage_framework
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/precommit/run_python.ps1 ruff format --check .
         language: system
         types: [python]
         pass_filenames: false
 
       - id: mypy
         name: mypy
-        entry: C:/DEV/FRAMEWORK/Framework-voyage-mvp/.venv/Scripts/python.exe -m mypy voyage_framework
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/precommit/run_python.ps1 mypy voyage_framework
         language: system
         types: [python]
         pass_filenames: false
 
       - id: pytest
         name: pytest
-        entry: C:/DEV/FRAMEWORK/Framework-voyage-mvp/.venv/Scripts/python.exe -m pytest -q tests/unit/test_report_validator.py tests/integration/test_report_validator_cli.py tests/unit/test_package_api_cli_identity.py
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/precommit/run_python.ps1 pytest -q tests/unit/test_report_validator.py tests/integration/test_report_validator_cli.py tests/unit/test_package_api_cli_identity.py
         language: system
         types: [python]
         pass_filenames: false
