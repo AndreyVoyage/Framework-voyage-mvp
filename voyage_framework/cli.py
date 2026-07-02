@@ -40,6 +40,7 @@ from voyage_framework.core.auto_loop import (
 from voyage_framework.core.event_engine import EventEngine
 from voyage_framework.core.launcher import LauncherConfig, run_dry_run
 from voyage_framework.core.models import SecurityPolicy
+from voyage_framework.core.repo_control_adapter import RepoControlAdapter
 from voyage_framework.core.report_validator import ReportValidatorError, validate_report
 from voyage_framework.core.task_engine import (
     TaskAlreadyExistsError,
@@ -980,6 +981,135 @@ def _dispatch_narrative(args: argparse.Namespace) -> int:
     return 1
 
 
+def _get_repo_control_adapter(name: str) -> RepoControlAdapter | None:
+    """Look up a RepoControlAdapter implementation by name.
+
+    Only "narrative" is supported for now; a second adapter is future work
+    (F5). Lazy-imports the concrete implementation, keeping cli.py's top
+    level free of any Narrative-specific dependency.
+    """
+    if name == "narrative":
+        from voyage_framework.core.narrative_adapter import NarrativeRepoControlAdapter
+
+        return NarrativeRepoControlAdapter()
+    return None
+
+
+def _repo_status(args: argparse.Namespace) -> int:
+    """Generic repo-control status check via a RepoControlAdapter."""
+    adapter = _get_repo_control_adapter(args.adapter)
+    if adapter is None:
+        print(
+            json.dumps(
+                {
+                    "command": "repo.status",
+                    "ok": False,
+                    "error": f"Unknown repo adapter: {args.adapter}",
+                    "adapter": args.adapter,
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        result = adapter.status(args.spec)
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "repo.status", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def _repo_validate(args: argparse.Namespace) -> int:
+    """Generic repo-control validate check via a RepoControlAdapter."""
+    adapter = _get_repo_control_adapter(args.adapter)
+    if adapter is None:
+        print(
+            json.dumps(
+                {
+                    "command": "repo.validate",
+                    "ok": False,
+                    "error": f"Unknown repo adapter: {args.adapter}",
+                    "adapter": args.adapter,
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        result = adapter.validate(args.spec, target=args.target)
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "repo.validate", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def _repo_audit(args: argparse.Namespace) -> int:
+    """Generic repo-control audit check via a RepoControlAdapter."""
+    adapter = _get_repo_control_adapter(args.adapter)
+    if adapter is None:
+        print(
+            json.dumps(
+                {
+                    "command": "repo.audit",
+                    "ok": False,
+                    "error": f"Unknown repo adapter: {args.adapter}",
+                    "adapter": args.adapter,
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        result = adapter.audit(args.spec, target=args.target, count=args.count)
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "repo.audit", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def _repo_preview(args: argparse.Namespace) -> int:
+    """Generic repo-control preview (non-executed plan) via a RepoControlAdapter."""
+    adapter = _get_repo_control_adapter(args.adapter)
+    if adapter is None:
+        print(
+            json.dumps(
+                {
+                    "command": "repo.preview",
+                    "ok": False,
+                    "error": f"Unknown repo adapter: {args.adapter}",
+                    "adapter": args.adapter,
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        result = adapter.preview(args.spec)
+    except AutoLoopError as exc:
+        print(json.dumps({"command": "repo.preview", "ok": False, "error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def _dispatch_repo(args: argparse.Namespace) -> int:
+    """Dispatcher for generic RepoControlAdapter commands."""
+    command = getattr(args, "repo_command", None)
+    if command == "status":
+        return _repo_status(args)
+    if command == "validate":
+        return _repo_validate(args)
+    if command == "audit":
+        return _repo_audit(args)
+    if command == "preview":
+        return _repo_preview(args)
+    print("❌ No repo subcommand provided. Use: status, validate, audit, preview")
+    return 1
+
+
 def _validate_report_command(args: argparse.Namespace) -> int:
     """Validate a structured report against current Git state."""
     try:
@@ -1266,6 +1396,73 @@ def main() -> int:
         help="Number of consecutive scenarios to check (default: 6)",
     )
 
+    # repo (F2-A-D-B generic RepoControlAdapter commands)
+    repo_parser = subparsers.add_parser(
+        "repo",
+        help="Generic repo-control adapter commands (status/validate/audit/preview)",
+    )
+    repo_subparsers = repo_parser.add_subparsers(dest="repo_command")
+
+    repo_status_parser = repo_subparsers.add_parser(
+        "status",
+        help="Read-only repo-control status check via a RepoControlAdapter",
+    )
+    repo_status_parser.add_argument(
+        "--adapter",
+        required=True,
+        help="Adapter name (currently only: narrative)",
+    )
+    repo_status_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+
+    repo_validate_parser = repo_subparsers.add_parser(
+        "validate",
+        help="Read-only repo-control validate check via a RepoControlAdapter",
+    )
+    repo_validate_parser.add_argument(
+        "--adapter",
+        required=True,
+        help="Adapter name (currently only: narrative)",
+    )
+    repo_validate_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_validate_parser.add_argument(
+        "--target",
+        default=None,
+        help="Adapter-specific validate target (e.g. a scenario file path for narrative)",
+    )
+
+    repo_audit_parser = repo_subparsers.add_parser(
+        "audit",
+        help="Read-only repo-control audit check via a RepoControlAdapter",
+    )
+    repo_audit_parser.add_argument(
+        "--adapter",
+        required=True,
+        help="Adapter name (currently only: narrative)",
+    )
+    repo_audit_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_audit_parser.add_argument(
+        "--target",
+        default=None,
+        help="Adapter-specific audit target (e.g. a starting scenario id for narrative)",
+    )
+    repo_audit_parser.add_argument(
+        "--count",
+        type=int,
+        default=6,
+        help="Adapter-specific audit option (e.g. scenario count for narrative; default: 6)",
+    )
+
+    repo_preview_parser = repo_subparsers.add_parser(
+        "preview",
+        help="Read-only, non-executed repo-control preview via a RepoControlAdapter",
+    )
+    repo_preview_parser.add_argument(
+        "--adapter",
+        required=True,
+        help="Adapter name (currently only: narrative)",
+    )
+    repo_preview_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+
     validate_report_parser = subparsers.add_parser(
         "validate-report",
         help="Validate a structured report against current Git state",
@@ -1431,6 +1628,7 @@ def main() -> int:
         "launcher": _dispatch_launcher,
         "auto": _dispatch_auto,
         "narrative": _dispatch_narrative,
+        "repo": _dispatch_repo,
         "validate-report": _validate_report_command,
     }
 

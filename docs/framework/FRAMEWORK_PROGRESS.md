@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-02)
-- Framework HEAD / origin/main: `5e951c662b2c636a0e3102b3886884da5474f5cf` (F2-A contract/wrapper foundation closed; baseline before F2-A-D generic CLI planning).
+- Framework HEAD / origin/main: `df8776b57e9954b370dddd6bbd0955dd60571fbd` (F2-A-CLOSEOUT closed; baseline before F2-A-D-B generic repo CLI commands).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -31,8 +31,10 @@
 | F2-A-A | RepoControlAdapter contract planning | DONE | Read-only planning: existing `adapter_protocols.py`/`adapter_contract.py` are AI-agent task-invocation concepts, not repo-control; a separate `repo_control_adapter.py` contract was chosen instead of reusing them. Mapped `auto_loop.run_preflight`/`run_plan` to generic `status`/`preview`, and `narrative_adapter.validate_scene`/`run_arc_check` to `validate`/`audit` for a future Narrative implementation. Verdict A. |
 | F2-A-B1 | Generic RepoControlAdapter contract + boundary tests | DONE | Purely additive: `repo_control_adapter.py` (contract + 4 result dataclasses), `test_repo_control_adapter.py`, `test_architecture_boundaries.py`. No Narrative wrapper or CLI changes in B1; `narrative_adapter.py` untouched. Committed and pushed as `1051e85786271f94d33b91d5fb482a8799235b93`. |
 | F2-A-C | Narrative RepoControlAdapter implementation wrapper | DONE | Added `NarrativeRepoControlAdapter(RepoControlAdapter)` in `narrative_adapter.py`, wrapping `run_preflight` (status), `validate_scene` (validate), `run_arc_check` (audit), `run_plan` (preview) unchanged. Existing narrative functions preserved; existing `voyage narrative scene-validate`/`arc-check` CLI commands preserved; generic CLI commands not added. Committed and pushed as `5e951c662b2c636a0e3102b3886884da5474f5cf`. |
-| F2-A foundation | Generic contract + Narrative wrapper closeout | DONE | F2-A-A (planning), F2-A-B1 (generic contract + boundary tests), F2-A-C (Narrative wrapper) all closed. Final closeout gate (F2-A-CLOSEOUT): ruff pass, format pass, mypy pass, pre-commit smoke pass, full pytest 691 passed in 657.35s. Next planned step: F2-A-D generic CLI command planning (not started). |
-| F2 | Generic repo-control adapter | IN PROGRESS | F2-A foundation (contract + Narrative wrapper) closed. Next: F2-A-D generic CLI command planning, then implementation. |
+| F2-A foundation | Generic contract + Narrative wrapper closeout | DONE | F2-A-A (planning), F2-A-B1 (generic contract + boundary tests), F2-A-C (Narrative wrapper) all closed. Final closeout gate (F2-A-CLOSEOUT): ruff pass, format pass, mypy pass, pre-commit smoke pass, full pytest 691 passed in 657.35s. Committed and pushed as `df8776b57e9954b370dddd6bbd0955dd60571fbd`. |
+| F2-A-D-A | Generic CLI command planning | DONE | Read-only planning: recommended additive `voyage repo status/validate/audit/preview` command group calling only `RepoControlAdapter`/`NarrativeRepoControlAdapter` methods; explicit `--adapter narrative` selection (not `--repo-role`, to avoid confusion with `report_validator`'s unrelated concept); `--target` optional in both validate/audit since the contract already handles `target=None` cleanly; old narrative commands preserved unchanged; no auto-detection. Verdict A. |
+| F2-A-D-B | Generic repo CLI commands | IN PROGRESS | Adds `voyage repo status/validate/audit/preview` in `cli.py`, calling `NarrativeRepoControlAdapter` via a small inline `_get_repo_control_adapter` selector (lazy-imported, "narrative" only). Old `voyage narrative scene-validate`/`arc-check` commands unchanged; no adapter auto-detection; no second adapter. New integration tests in `tests/integration/test_repo_cli.py`. Commit pending. |
+| F2 | Generic repo-control adapter | IN PROGRESS | F2-A foundation (contract + Narrative wrapper) closed; F2-A-D-A planning done; F2-A-D-B generic CLI commands landing now. Next: F2-A-D closeout/full-suite gate or F2-A-E decision. |
 | F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
@@ -69,4 +71,6 @@
 | F2-A-A | yes | - | - | - | - |
 | F2-A-B1 | yes | yes (pre-commit) | ok:true | `1051e85` | yes |
 | F2-A-C | yes | yes (pre-commit) | ok:true | `5e951c6` | yes |
-| F2-A-CLOSEOUT | yes | yes (pre-commit) | pending | pending | pending |
+| F2-A-CLOSEOUT | yes | yes (pre-commit) | ok:true | `df8776b` | yes |
+| F2-A-D-A | yes | - | - | - | - |
+| F2-A-D-B | yes | yes (pre-commit) | pending | pending | pending |
