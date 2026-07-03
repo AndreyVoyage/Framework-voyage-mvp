@@ -971,6 +971,24 @@ def _narrative_arc_check(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _narrative_inventory(args: argparse.Namespace) -> int:
+    """Read-only Narrative inventory/readiness summary (does not modify the repo)."""
+    from voyage_framework.core.narrative_adapter import narrative_inventory
+
+    try:
+        result = narrative_inventory(Path(args.spec))
+    except AutoLoopError as exc:
+        print(
+            json.dumps(
+                {"command": "narrative.inventory", "ok": False, "error": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(json.dumps(result, indent=2))
+    return 0 if result["ok"] else 1
+
+
 def _dispatch_narrative(args: argparse.Namespace) -> int:
     """Dispatcher for Narrative source-only validation commands."""
     command = getattr(args, "narrative_command", None)
@@ -978,7 +996,9 @@ def _dispatch_narrative(args: argparse.Namespace) -> int:
         return _narrative_scene_validate(args)
     if command == "arc-check":
         return _narrative_arc_check(args)
-    print("❌ No narrative subcommand provided. Use: scene-validate, arc-check")
+    if command == "inventory":
+        return _narrative_inventory(args)
+    print("❌ No narrative subcommand provided. Use: scene-validate, arc-check, inventory")
     return 1
 
 
@@ -1372,10 +1392,29 @@ def main() -> int:
         description=(
             "Narrative-specific compatibility commands (source-only validation). "
             "These remain available as-is. Prefer `voyage repo ... --adapter narrative` "
-            "for the generic repo-control interface."
+            "for the generic repo-control interface. The inventory command is read-only "
+            "and does not modify the Narrative repo."
         ),
     )
     narrative_subparsers = narrative_parser.add_subparsers(dest="narrative_command")
+
+    narrative_inventory_parser = narrative_subparsers.add_parser(
+        "inventory",
+        help=(
+            "Read-only Narrative inventory/readiness summary "
+            "(scenarios, library/matrix, schema-version mix)"
+        ),
+        description=(
+            "Read-only inventory of the target Narrative repo. Reports scenario files, "
+            "presence of SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json, schema-version "
+            "mix, missing expected files, and a readiness verdict. Does not modify the repo."
+        ),
+    )
+    narrative_inventory_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the autoloop JSON spec",
+    )
 
     narrative_scene_validate_parser = narrative_subparsers.add_parser(
         "scene-validate",

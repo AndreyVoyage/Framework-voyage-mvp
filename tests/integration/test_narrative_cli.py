@@ -198,16 +198,26 @@ def _arc_scene_cli(num: int, has_cso: bool = True) -> dict[str, Any]:
     }
 
 
+def _inventory_setup(tmp_path: Path) -> tuple[Path, Path]:
+    repo = tmp_path / "narrative"
+    head = _init_repo(repo)
+    (repo / "scenarios").mkdir()
+    spec_file = tmp_path / "spec.json"
+    spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+    return repo, spec_file
+
+
 class TestNarrativeCLIHelp:
     def test_narrative_help(self) -> None:
         result = _run(["narrative", "--help"])
         assert result.returncode == 0
-        assert "narrative" in result.stdout.lower() or "scene-validate" in result.stdout
+        assert "inventory" in result.stdout
+        assert "scene-validate" in result.stdout
 
     def test_narrative_no_subcommand(self) -> None:
         result = _run(["narrative"])
         assert result.returncode == 1
-        assert "scene-validate" in result.stdout
+        assert "inventory" in result.stdout
 
     def test_scene_validate_help(self) -> None:
         result = _run(["narrative", "scene-validate", "--help"])
@@ -226,6 +236,40 @@ class TestNarrativeCLIHelp:
         result = _run(["--help"])
         assert result.returncode == 0
         assert "narrative" in result.stdout
+
+    def test_inventory_help(self) -> None:
+        result = _run(["narrative", "inventory", "--help"])
+        assert result.returncode == 0
+        assert "--spec" in result.stdout
+        assert "read-only" in result.stdout.lower()
+
+
+class TestNarrativeInventoryCLI:
+    def test_inventory_returns_ok_true(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+
+        result = _run(["narrative", "inventory", "--spec", str(spec_file)])
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["ok"] is True
+        assert data["scenario_count"] == 1
+        assert data["scenario_files"] == ["scenarios/SCENARIO_025_TEST.json"]
+        assert "readiness" in data
+
+    def test_inventory_missing_spec_returns_ok_false(self, tmp_path: Path) -> None:
+        missing_spec = tmp_path / "missing.json"
+
+        result = _run(["narrative", "inventory", "--spec", str(missing_spec)])
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["ok"] is False
 
 
 class TestNarrativeSceneValidateCLI:

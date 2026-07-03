@@ -271,6 +271,94 @@ def _match_pattern(path: str, pattern: str) -> bool:
     return path == pattern or fnmatch.fnmatch(path, pattern)
 
 
+# ── Inventory / readiness ─────────────────────────────────────────────────────
+
+
+def narrative_inventory(spec_path: str | Path) -> dict[str, Any]:
+    """Read-only inventory/readiness summary of a Narrative target repo.
+
+    Loads the autoloop spec, discovers scenario files, checks for the
+    presence of expected catalog files (``SCENARIO_LIBRARY.json`` and
+    ``SCENARIO_MATRIX.json``), and reports a coarse schema-version mix.
+
+    Never writes, stages, commits, or pushes. Does not execute RenPy or
+    any product runtime.
+    """
+    spec = AutoLoopSpec.from_file(Path(spec_path))
+    repo_root = str(spec.target_repo)
+    spec_path_str = str(Path(spec_path).resolve())
+
+    errors: list[str] = []
+    warnings: list[str] = []
+    missing: list[str] = []
+
+    scenarios_dir = spec.target_repo / "scenarios"
+    scenario_files: list[str] = []
+    if scenarios_dir.is_dir():
+        for path in sorted(scenarios_dir.glob("SCENARIO_*.json")):
+            if path.name in ("SCENARIO_LIBRARY.json", "SCENARIO_MATRIX.json"):
+                continue
+            scenario_files.append(f"scenarios/{path.name}")
+    else:
+        warnings.append(f"scenarios directory not found: {scenarios_dir}")
+
+    library_path = scenarios_dir / "SCENARIO_LIBRARY.json"
+    matrix_path = scenarios_dir / "SCENARIO_MATRIX.json"
+    library_present = library_path.is_file()
+    matrix_present = matrix_path.is_file()
+    if not library_present:
+        missing.append("scenarios/SCENARIO_LIBRARY.json")
+    if not matrix_present:
+        missing.append("scenarios/SCENARIO_MATRIX.json")
+
+    schema_versions: dict[str, int] = {}
+    for rel in scenario_files:
+        scene_path = spec.target_repo / rel
+        try:
+            raw = json.loads(scene_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            errors.append(f"{rel}: cannot read scenario: {exc}")
+            schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
+            continue
+        except json.JSONDecodeError as exc:
+            errors.append(f"{rel}: JSON parse error: {exc}")
+            schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
+            continue
+
+        if isinstance(raw, dict):
+            version = raw.get("schema_version") or raw.get("version") or "unknown"
+            version_key = str(version)
+        else:
+            version_key = "unknown"
+        schema_versions[version_key] = schema_versions.get(version_key, 0) + 1
+
+    if errors:
+        readiness = "blocked"
+        ok = False
+    elif missing or warnings:
+        readiness = "warnings"
+        ok = True
+    else:
+        readiness = "ready"
+        ok = True
+
+    return {
+        "command": "narrative.inventory",
+        "ok": ok,
+        "spec_path": spec_path_str,
+        "repo_root": repo_root,
+        "scenario_files": scenario_files,
+        "scenario_count": len(scenario_files),
+        "library": {"present": library_present, "path": "scenarios/SCENARIO_LIBRARY.json"},
+        "matrix": {"present": matrix_present, "path": "scenarios/SCENARIO_MATRIX.json"},
+        "schema_versions": schema_versions,
+        "missing_expected_files": sorted(missing),
+        "warnings": warnings,
+        "errors": errors,
+        "readiness": readiness,
+    }
+
+
 # ── Arc checkpoint ────────────────────────────────────────────────────────────
 
 

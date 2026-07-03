@@ -13,6 +13,7 @@ import pytest
 from voyage_framework.core.auto_loop import AutoLoopError
 from voyage_framework.core.narrative_adapter import (
     NarrativeRepoControlAdapter,
+    narrative_inventory,
     run_arc_check,
     validate_scene,
 )
@@ -413,6 +414,106 @@ def _write_arc(repo: Path, scenes: list[dict[str, Any]], start_num: int = 20) ->
     for i, scene in enumerate(scenes):
         num = start_num + i
         (d / f"SCENARIO_{num:03d}_TEST.json").write_text(json.dumps(scene), encoding="utf-8")
+
+
+def _write_catalog(repo: Path, name: str) -> None:
+    (repo / "scenarios" / name).write_text("{}", encoding="utf-8")
+
+
+def _inventory_setup(tmp_path: Path) -> tuple[Path, Path]:
+    repo = tmp_path / "narrative"
+    head = _init_repo(repo)
+    (repo / "scenarios").mkdir()
+    spec_file = tmp_path / "spec.json"
+    spec_file.write_text(json.dumps(_spec_dict(repo, head)), encoding="utf-8")
+    return repo, spec_file
+
+
+class TestNarrativeInventory:
+    def test_valid_inventory_ready(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        before_files = sorted(p.name for p in repo.rglob("*") if p.is_file())
+
+        result = narrative_inventory(spec_file)
+
+        after_files = sorted(p.name for p in repo.rglob("*") if p.is_file())
+        assert after_files == before_files
+
+        assert result["command"] == "narrative.inventory"
+        assert result["ok"] is True
+        assert result["scenario_files"] == ["scenarios/SCENARIO_025_TEST.json"]
+        assert result["scenario_count"] == 1
+        assert result["library"]["present"] is True
+        assert result["matrix"]["present"] is True
+        assert result["missing_expected_files"] == []
+        assert result["readiness"] == "ready"
+        assert result["errors"] == []
+        assert json.dumps(result)
+
+    def test_missing_catalog_files_warn(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+
+        result = narrative_inventory(spec_file)
+
+        assert result["ok"] is True
+        assert result["readiness"] == "warnings"
+        assert result["missing_expected_files"] == [
+            "scenarios/SCENARIO_LIBRARY.json",
+            "scenarios/SCENARIO_MATRIX.json",
+        ]
+
+    def test_schema_version_mix(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+        v2_scene = {**_valid_scene(), "schema_version": "2.0"}
+        v1_scene = {**_valid_scene("SC_026"), "version": "1.0"}
+        v1_scene.pop("schema_version", None)
+        unknown_scene = {**_valid_scene("SC_027")}
+        unknown_scene.pop("schema_version", None)
+        unknown_scene.pop("version", None)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(v2_scene), encoding="utf-8"
+        )
+        (repo / "scenarios" / "SCENARIO_026_TEST.json").write_text(
+            json.dumps(v1_scene), encoding="utf-8"
+        )
+        (repo / "scenarios" / "SCENARIO_027_TEST.json").write_text(
+            json.dumps(unknown_scene), encoding="utf-8"
+        )
+
+        result = narrative_inventory(spec_file)
+
+        assert result["ok"] is True
+        assert result["schema_versions"].get("2.0") == 1
+        assert result["schema_versions"].get("1.0") == 1
+        assert result["schema_versions"].get("unknown") == 1
+        assert result["scenario_count"] == 3
+
+    def test_invalid_spec_raises_auto_loop_error(self, tmp_path: Path) -> None:
+        spec_file = tmp_path / "spec.json"
+        spec_file.write_text("{}", encoding="utf-8")
+
+        with pytest.raises(AutoLoopError):
+            narrative_inventory(spec_file)
+
+    def test_broken_scenario_reported_as_error(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text("not json", encoding="utf-8")
+
+        result = narrative_inventory(spec_file)
+
+        assert result["ok"] is False
+        assert result["readiness"] == "blocked"
+        assert any("JSON parse error" in error for error in result["errors"])
+        assert result["schema_versions"].get("unknown") == 1
 
 
 class TestRunArcCheck:
