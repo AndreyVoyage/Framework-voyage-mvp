@@ -225,3 +225,46 @@ def test_validate_report_cli_auto_commit_invalid_hash_fails(tmp_path: Path) -> N
     assert any(
         mismatch["check"] == "auto_commit_after_hash_format" for mismatch in payload["mismatches"]
     )
+
+
+def test_validate_report_cli_narrative_forbidden_claimed_path_fails(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    head = _init_repo(repo)
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "schema": "voyage.report.v1",
+                "task_id": "T-CLI-NARR-FORBIDDEN",
+                "timestamp": "2026-06-30T00:00:00Z",
+                "repos": [
+                    {
+                        "name": "narrative",
+                        "path": str(repo),
+                        "expected_branch": "main",
+                        "expected_head": head,
+                        "expected_origin_main": head,
+                        "claimed_clean": True,
+                        "claimed_changed_files": ["script.rpy"],
+                        "claimed_staged_files": [],
+                        "repo_role": "narrative",
+                    }
+                ],
+                "safety": {},
+                "claimed_verdict": "A",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(report)
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 1
+    assert payload["ok"] is False
+    assert any(
+        mismatch["check"] == "forbidden_paths:claimed_changed_files"
+        for mismatch in payload["mismatches"]
+    )

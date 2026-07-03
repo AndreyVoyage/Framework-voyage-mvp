@@ -258,6 +258,60 @@ def test_forbidden_claimed_path_is_error(
     assert any("forbidden_paths" in mismatch.check for mismatch in result.mismatches)
 
 
+def test_narrative_forbidden_claimed_path_is_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _patch_git(monkeypatch)
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _report(
+            repo,
+            repo_overrides={
+                "claimed_clean": False,
+                "claimed_changed_files": ["script.rpy"],
+                "repo_role": "narrative",
+            },
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(
+        mismatch.check == "forbidden_paths:claimed_changed_files" for mismatch in result.mismatches
+    )
+
+
+def test_unknown_role_falls_back_to_generic_for_forbidden_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _patch_git(monkeypatch)
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _report(
+            repo,
+            repo_overrides={
+                "claimed_clean": False,
+                "claimed_changed_files": [".env"],
+                "repo_role": "unknown-role",
+            },
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(
+        mismatch.check == "forbidden_paths:claimed_changed_files" for mismatch in result.mismatches
+    )
+
+
 def test_unverifiable_safety_claims_are_reported(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

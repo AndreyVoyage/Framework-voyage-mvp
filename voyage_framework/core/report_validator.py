@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
 import re
 from dataclasses import dataclass
@@ -17,6 +16,10 @@ from voyage_framework.core._git_utils import (
     _git_parent_commits,
     _git_status,
     _git_stdout,
+)
+from voyage_framework.core.forbidden_paths import (
+    _matches_any,
+    forbidden_patterns_for_role,
 )
 
 SUPPORTED_SCHEMA = "voyage.report.v1"
@@ -36,44 +39,6 @@ UNVERIFIABLE_SAFETY_KEYS: frozenset[str] = frozenset(
         "git_clean_used",
     }
 )
-
-FORBIDDEN_BY_ROLE: dict[str, tuple[str, ...]] = {
-    "framework": (
-        ".env",
-        ".env.*",
-        ".voyage/**",
-        "tools/**",
-        "personas/**",
-        "**/CLAUDE.md",
-        ".claude/**",
-        "**/.claude/**",
-        "C:/Users/*/.claude/**",
-        "**/tool-output/**",
-        "**/temp/**",
-    ),
-    "narrative": (
-        ".env",
-        ".env.*",
-        ".voyage/**",
-        "tools/**",
-        "personas/**",
-        "*.rpy",
-        "novel/game/script.rpy",
-        "novel/game/screens.rpy",
-        "script.rpy",
-        "screens.rpy",
-        "scenarios/INDEX.json",
-        "scenarios/SCENARIO_LIBRARY.json",
-        "scenarios/SCENARIO_MATRIX.json",
-        "scenarios/*.py",
-        "scenarios/*.md",
-    ),
-    "generic": (
-        ".env",
-        ".env.*",
-        ".voyage/**",
-    ),
-}
 
 
 class ReportValidatorError(Exception):
@@ -302,7 +267,7 @@ def _validate_repo(
             )
         )
 
-    forbidden = _forbidden_patterns(repo.repo_role)
+    forbidden = forbidden_patterns_for_role(repo.repo_role)
     forbidden_sources = [
         ("claimed_changed_files", repo.claimed_changed_files),
         ("actual_dirty_files", actual_dirty),
@@ -561,23 +526,6 @@ def _normalize_repo_path(path: str) -> str:
     while normalized.startswith("./"):
         normalized = normalized[2:]
     return normalized
-
-
-def _forbidden_patterns(role: str) -> tuple[str, ...]:
-    return FORBIDDEN_BY_ROLE.get(role.lower(), FORBIDDEN_BY_ROLE["generic"])
-
-
-def _matches_any(path: str, patterns: tuple[str, ...]) -> bool:
-    normalized = _normalize_repo_path(path)
-    return any(_match_pattern(normalized, pattern) for pattern in patterns)
-
-
-def _match_pattern(path: str, pattern: str) -> bool:
-    normalized = _normalize_repo_path(pattern)
-    if normalized.endswith("/**"):
-        prefix = normalized[:-3]
-        return path == prefix or path.startswith(f"{prefix}/")
-    return path == normalized or fnmatch.fnmatch(path, normalized)
 
 
 def _recommend_verdict(

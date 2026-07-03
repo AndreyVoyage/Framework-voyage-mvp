@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-03)
-- Framework HEAD / origin/main: `15299860f0a7e52c4ab3e236200091b2e66e8b07` (F3-A-B report-state closed; F3-A-C-A planning completed).
+- Framework HEAD / origin/main: `b0e8742bb8039e1c50f41cfaf17c9523a3cf27b3` (F3-A-C-B auto_commit validation closed; F3-A-D-A planning completed).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -40,7 +40,7 @@
 | F3-A-A | Trust hardening planning | DONE | Read-only planning completed with Verdict A. Recommended order: report-state → auto_commit range check → spec-driven forbidden paths. |
 | F3-A-B | Add `voyage report-state` read-only command | DONE | Read-only repo/git state observation command. Emits canonical Voyage-observed JSON. No auto_commit checks, no spec-driven forbidden path changes, no report_validator.py changes. Committed and pushed as `15299860f0a7e52c4ab3e236200091b2e66e8b07`. Full pytest 718 passed in 938.07s. |
 | F3-A-C-A | Auto-commit / commit-range validation planning | DONE | Read-only planning completed with Verdict A. Recommended flat repo fields `auto_commit_after` and `auto_commit_before`; existing behavior unchanged when `auto_commit_after` absent. |
-| F3-A-C-B | Add auto_commit validation to validate-report | IN PROGRESS | Post-commit changed-files validation against actual commit/range. No spec-driven forbidden path changes; no CLI command changes beyond existing validate-report behavior. Commit pending. |
+| F3-A-C-B | Add auto_commit validation to validate-report | DONE | Post-commit changed-files validation against actual commit/range. Committed/pushed as `b0e8742bb8039e1c50f41cfaf17c9523a3cf27b3`. Full pytest 735 passed in 1018.15s. Post-commit auto_commit dogfood passed. No CLI command changes. |
 | F3 | Trust hardening | IN PROGRESS | `report-state` done; `auto_commit` range check under implementation; spec-driven forbidden paths (D-006) remain planned. |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
@@ -52,8 +52,8 @@
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
 - Narrative adapter tests ~470s (F1 perf); improved via F1-C-C-B1, further gains deferred to F1-C-C-B2 if still wanted.
 - ~~Flaky timestamp assertion in `tests/unit/test_task_engine.py` remains a known optional separate fix.~~ Addressed in F1-C-D-B (test-only deterministic clock seam).
-- Validator forbidden-paths hardcoded (`FORBIDDEN_BY_ROLE`) -> spec-driven in F3 after F3-A-C-B.
-- Validator auto_commit range check -> under implementation in F3-A-C-B.
+- Validator auto_commit range check -> DONE in F3-A-C-B (`b0e8742bb8039e1c50f41cfaf17c9523a3cf27b3`).
+- Validator forbidden-paths hardcoded (`FORBIDDEN_BY_ROLE`) -> under implementation in F3-A-D-B.
 
 ## Closeout ledger (each significant step appends a line)
 | Step | Report (md) | JSON voyage.report.v1 | validate-report | Commit | Push |
@@ -85,4 +85,6 @@
 | F3-A-A | yes | - | - | - | - |
 | F3-A-B | yes | yes (pre-commit) | ok:true | `1529986` | yes |
 | F3-A-C-A | yes | - | - | - | - |
-| F3-A-C-B | yes | pending | pending | pending | pending |
+| F3-A-C-B | yes | yes (pre-commit + post-commit) | ok:true | `b0e8742` | yes |
+| F3-A-D-A | yes | - | - | - | - |
+| F3-A-D-B | yes | pending | pending | pending | pending |

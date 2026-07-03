@@ -88,17 +88,39 @@ class TestReportValidatorPolicyGuard:
         )
         assert _imports_module(tree, "narrative_adapter") is False
 
-    def test_forbidden_by_role_is_plain_data(self) -> None:
-        from voyage_framework.core.report_validator import FORBIDDEN_BY_ROLE
+    def test_forbidden_patterns_by_role_is_plain_data(self) -> None:
+        from voyage_framework.core.forbidden_paths import _FORBIDDEN_PATTERNS_BY_ROLE
 
-        assert isinstance(FORBIDDEN_BY_ROLE, dict)
-        for role, patterns in FORBIDDEN_BY_ROLE.items():
+        assert isinstance(_FORBIDDEN_PATTERNS_BY_ROLE, dict)
+        for role, patterns in _FORBIDDEN_PATTERNS_BY_ROLE.items():
             assert isinstance(role, str)
             assert isinstance(patterns, tuple)
             assert all(isinstance(pattern, str) for pattern in patterns)
         # This guard does not forbid the existing "narrative" role key;
         # it only asserts the policy stays data, not imported behavior.
-        assert "narrative" in FORBIDDEN_BY_ROLE
+        assert "narrative" in _FORBIDDEN_PATTERNS_BY_ROLE
+
+    def test_report_validator_has_no_narrative_specific_path_literals(self) -> None:
+        text = REPORT_VALIDATOR_FILE.read_text(encoding="utf-8")
+        narrative_literals = (
+            "*.rpy",
+            "novel/game/script.rpy",
+            "novel/game/screens.rpy",
+            "script.rpy",
+            "screens.rpy",
+            "scenarios/INDEX.json",
+            "scenarios/SCENARIO_LIBRARY.json",
+            "scenarios/SCENARIO_MATRIX.json",
+            "scenarios/*.py",
+            "scenarios/*.md",
+        )
+        hits = [literal for literal in narrative_literals if literal in text]
+        assert hits == []
+
+    def test_report_validator_imports_forbidden_paths_resolver(self) -> None:
+        text = REPORT_VALIDATOR_FILE.read_text(encoding="utf-8")
+        assert "from voyage_framework.core.forbidden_paths import" in text
+        assert "forbidden_patterns_for_role" in text
 
 
 class TestContractGenericityGuard:
