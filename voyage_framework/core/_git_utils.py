@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 # Git local-env vars set by hooks when running inside a worktree. Clear them
 # before invoking git against a target repo so hook env does not pollute tests
@@ -57,3 +59,114 @@ def _git_status(repo: Path) -> list[str]:
     if result.returncode != 0:
         return []
     return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def _normalize_repo_path(path: str) -> str:
+    normalized = path.replace("\\", "/").strip()
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return normalized
+
+
+def _status_path(line: str) -> str:
+    path = line[3:] if len(line) > 3 else line
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    return _normalize_repo_path(path.strip().strip('"'))
+
+
+def _git_name_only(repo: Path, *args: str) -> list[str]:
+    result = _git(repo, *args)
+    if result.returncode != 0:
+        return []
+    return sorted(_normalize_repo_path(line) for line in result.stdout.splitlines() if line.strip())
+
+
+def collect_repo_state(repo_path: str | Path) -> dict[str, Any]:
+    """Return a JSON-serializable, read-only snapshot of a git repository state.
+
+    The function never modifies the repository. It only runs read-only git
+    commands and returns observed facts. A dirty worktree is reported as data,
+    not as a policy failure.
+    """
+    path = Path(repo_path).resolve()
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not path.exists() or not path.is_dir():
+        errors.append(f"repo path does not exist or is not a directory: {path}")
+        return {
+            "command": "report-state",
+            "ok": False,
+            "repo_path": str(path),
+            "branch": None,
+            "head": None,
+            "origin_main": None,
+            "head_equals_origin_main": None,
+            "worktree_clean": False,
+            "changed_files": [],
+            "staged_files": [],
+            "untracked_files": [],
+            "timestamp_utc": datetime.now(UTC).isoformat(),
+            "git_status_short": [],
+            "errors": errors,
+            "warnings": warnings,
+        }
+
+    inside = _git(path, "rev-parse", "--is-inside-work-tree")
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        errors.append(f"not a git repository: {path}")
+        return {
+            "command": "report-state",
+            "ok": False,
+            "repo_path": str(path),
+            "branch": None,
+            "head": None,
+            "origin_main": None,
+            "head_equals_origin_main": None,
+            "worktree_clean": False,
+            "changed_files": [],
+            "staged_files": [],
+            "untracked_files": [],
+            "timestamp_utc": datetime.now(UTC).isoformat(),
+            "git_status_short": [],
+            "errors": errors,
+            "warnings": warnings,
+        }
+
+    branch = _git_stdout(path, "branch", "--show-current") or None
+    head = _git_stdout(path, "rev-parse", "HEAD") or None
+    origin_main = _git_stdout(path, "rev-parse", "origin/main") or None
+
+    if origin_main is None:
+        warnings.append("origin/main ref not found")
+
+    head_equals_origin_main: bool | None = None
+    if head and origin_main:
+        head_equals_origin_main = head == origin_main
+
+    status_lines = _git_status(path)
+    worktree_clean = not status_lines
+
+    untracked_files = sorted(_status_path(line) for line in status_lines if line.startswith("?? "))
+    staged_files = _git_name_only(path, "diff", "--cached", "--name-only")
+    unstaged_files = _git_name_only(path, "diff", "--name-only")
+    changed_files = sorted(set(unstaged_files) | set(staged_files) | set(untracked_files))
+
+    return {
+        "command": "report-state",
+        "ok": True,
+        "repo_path": str(path),
+        "branch": branch,
+        "head": head,
+        "origin_main": origin_main,
+        "head_equals_origin_main": head_equals_origin_main,
+        "worktree_clean": worktree_clean,
+        "changed_files": changed_files,
+        "staged_files": staged_files,
+        "untracked_files": untracked_files,
+        "timestamp_utc": datetime.now(UTC).isoformat(),
+        "git_status_short": status_lines,
+        "errors": errors,
+        "warnings": warnings,
+    }

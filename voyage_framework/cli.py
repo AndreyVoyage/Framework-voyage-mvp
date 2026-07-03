@@ -31,6 +31,7 @@ from voyage_framework.agents.runtime import AgentRuntime
 from voyage_framework.chronicler.decision_log import DecisionLog
 from voyage_framework.chronicler.docs_builder import DocsBuilder
 from voyage_framework.chronicler.journal import ProcessJournal
+from voyage_framework.core._git_utils import collect_repo_state
 from voyage_framework.core.auto_loop import (
     AutoLoopError,
     run_plan,
@@ -1110,6 +1111,18 @@ def _dispatch_repo(args: argparse.Namespace) -> int:
     return 1
 
 
+def _report_state_command(args: argparse.Namespace) -> int:
+    """Emit canonical Voyage-observed repo/git state as JSON.
+
+    This command is read-only and policy-neutral: a dirty worktree is observed
+    and reported, not treated as a failure. Use it to compare agent reports
+    against Voyage-generated facts.
+    """
+    state = collect_repo_state(getattr(args, "repo", "."))
+    print(json.dumps(state, indent=2))
+    return 0 if state["ok"] else 1
+
+
 def _validate_report_command(args: argparse.Namespace) -> int:
     """Validate a structured report against current Git state."""
     try:
@@ -1474,6 +1487,23 @@ def main() -> int:
     )
     repo_preview_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
 
+    report_state_parser = subparsers.add_parser(
+        "report-state",
+        help="Emit canonical Voyage-observed repo/git state as JSON",
+        description=(
+            "Read-only observation of a git repository. Emits a JSON snapshot "
+            "of branch, HEAD, origin/main, worktree cleanliness, changed/staged/"
+            "untracked files, and timestamps. Dirty worktrees are observed, not "
+            "treated as policy failures. Useful for comparing agent reports with "
+            "Voyage-observed facts."
+        ),
+    )
+    report_state_parser.add_argument(
+        "--repo",
+        default=".",
+        help="Path to the repository to observe (default: current working directory)",
+    )
+
     validate_report_parser = subparsers.add_parser(
         "validate-report",
         help="Validate a structured report against current Git state",
@@ -1640,6 +1670,7 @@ def main() -> int:
         "auto": _dispatch_auto,
         "narrative": _dispatch_narrative,
         "repo": _dispatch_repo,
+        "report-state": _report_state_command,
         "validate-report": _validate_report_command,
     }
 

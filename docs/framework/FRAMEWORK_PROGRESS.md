@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-03)
-- Framework HEAD / origin/main: `ab1b8f4049dbbb7ec4c59ce2e3fc1ff4e2b5e306` (F2-A-D-CLOSEOUT closed; baseline before F2-A-E CLI help/docs polish).
+- Framework HEAD / origin/main: `9615c2934ee4106fe718967d041db290c92b29d5` (F2-A-E closed; F3-A-A planning completed).
 - Narrative HEAD / origin/main: `5571bd2505715b8f19b092ad1762b8d32449c360`; working tree dirty (handled in Narrative chat - D-007).
 - Direction: generic dev-control-OS (D-001).
 
@@ -35,9 +35,11 @@
 | F2-A-D-A | Generic CLI command planning | DONE | Read-only planning: recommended additive `voyage repo status/validate/audit/preview` command group calling only `RepoControlAdapter`/`NarrativeRepoControlAdapter` methods; explicit `--adapter narrative` selection (not `--repo-role`, to avoid confusion with `report_validator`'s unrelated concept); `--target` optional in both validate/audit since the contract already handles `target=None` cleanly; old narrative commands preserved unchanged; no auto-detection. Verdict A. |
 | F2-A-D-B | Generic repo CLI commands | DONE | Added `voyage repo status/validate/audit/preview` in `cli.py`, calling `NarrativeRepoControlAdapter` via a small inline `_get_repo_control_adapter` selector (lazy-imported, "narrative" only). Old `voyage narrative scene-validate`/`arc-check` commands unchanged; no adapter auto-detection; no second adapter. New integration tests in `tests/integration/test_repo_cli.py`. Committed and pushed as `bde1d3fb546430a3b628fe6dcd81bfd865eecdd2`. |
 | F2-A-D | Generic repo CLI layer closeout | DONE | F2-A-D-A (planning), F2-A-D-B (`voyage repo status/validate/audit/preview` + `--adapter narrative`, unknown-adapter handled cleanly, old narrative commands preserved unchanged, no auto-detection, no second adapter) both closed. Final closeout gate (F2-A-D-CLOSEOUT): ruff pass, format pass, mypy pass, pre-commit smoke pass, full pytest 699 passed in 610.53s. Committed and pushed as `ab1b8f4049dbbb7ec4c59ce2e3fc1ff4e2b5e306`. |
-| F2-A-E | Repo CLI help and docs polish | IN PROGRESS | CLI help/docs polish only, no behavior changes: `voyage repo --help` now describes the generic RepoControlAdapter surface and names `narrative` as the currently supported adapter; `voyage narrative --help` now describes those commands as Narrative-specific compatibility commands and points to `voyage repo ... --adapter narrative`. 6 new lightweight help tests added to `test_repo_cli.py`. Old commands/behavior unchanged. Commit pending. |
-| F2 | Generic repo-control adapter | IN PROGRESS | F2-A foundation (contract + Narrative wrapper) and F2-A-D (generic CLI layer) both closed; F2-A-E CLI help/docs polish landing now. Next decision after F2-A-E: second adapter proof vs. F3 trust hardening. |
-| F3 | Trust hardening | PLANNED | `report-state`, `auto_commit` range check, spec-driven forbidden paths (D-006). |
+| F2-A-E | Repo CLI help and docs polish | DONE | CLI help/docs polish only, no behavior changes: `voyage repo --help` now describes the generic RepoControlAdapter surface and names `narrative` as the currently supported adapter; `voyage narrative --help` now describes those commands as Narrative-specific compatibility commands and points to `voyage repo ... --adapter narrative`. 6 new lightweight help tests added to `test_repo_cli.py`. Old commands/behavior unchanged. Committed and pushed as `9615c2934ee4106fe718967d041db290c92b29d5`. |
+| F2 | Generic repo-control adapter | DONE | F2-A foundation (contract + Narrative wrapper), F2-A-D (generic CLI layer), and F2-A-E (CLI help/docs polish) all closed. |
+| F3-A-A | Trust hardening planning | DONE | Read-only planning completed with Verdict A. Recommended order: report-state → auto_commit range check → spec-driven forbidden paths. |
+| F3-A-B | Add `voyage report-state` read-only command | IN PROGRESS | Read-only repo/git state observation command. Emits canonical Voyage-observed JSON. No auto_commit checks, no spec-driven forbidden path changes, no report_validator.py changes. Commit pending. |
+| F3 | Trust hardening | IN PROGRESS | `report-state` under implementation; `auto_commit` range check and spec-driven forbidden paths (D-006) remain planned. |
 | F4 | Narrative read-only tools | PLANNED | preflight, spec-update (via adapter). |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
@@ -48,8 +50,8 @@
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
 - Narrative adapter tests ~470s (F1 perf); improved via F1-C-C-B1, further gains deferred to F1-C-C-B2 if still wanted.
 - ~~Flaky timestamp assertion in `tests/unit/test_task_engine.py` remains a known optional separate fix.~~ Addressed in F1-C-D-B (test-only deterministic clock seam).
-- Validator forbidden-paths hardcoded (`FORBIDDEN_BY_ROLE`) -> spec-driven in F3.
-- Validator does not check changed-files vs a named `auto_commit` -> F3.
+- Validator forbidden-paths hardcoded (`FORBIDDEN_BY_ROLE`) -> spec-driven in F3 after report-state and auto_commit.
+- Validator does not check changed-files vs a named `auto_commit` -> F3 after report-state.
 
 ## Closeout ledger (each significant step appends a line)
 | Step | Report (md) | JSON voyage.report.v1 | validate-report | Commit | Push |
@@ -77,4 +79,6 @@
 | F2-A-D-A | yes | - | - | - | - |
 | F2-A-D-B | yes | yes (pre-commit) | ok:true | `bde1d3f` | yes |
 | F2-A-D-CLOSEOUT | yes | yes (pre-commit) | ok:true | `ab1b8f4` | yes |
-| F2-A-E | yes | yes (pre-commit) | pending | pending | pending |
+| F2-A-E | yes | yes (pre-commit) | ok:true | `9615c29` | yes |
+| F3-A-A | yes | - | - | - | - |
+| F3-A-B | yes | pending | pending | pending | pending |
