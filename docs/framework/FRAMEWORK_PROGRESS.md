@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-03)
-- Framework HEAD / origin/main: `d1a7b5bb93787e63ccd6a3ecc8e7f68eadbc53e2` (F3 Trust Hardening closed; F4-A-A planning done; F4-A-B implementation pending).
-- Narrative HEAD: `b53a0d1dca3e33cf1198ae0da3b2b866c8ea6a8f` on branch `feature/n5e-roadmap-status-sync`; worktree clean (observed read-only during F4-A-B planning).
+- Framework HEAD / origin/main: `b0fe3f9a89ce68adb9af847646722ce1e847b1a6` (F4-A narrative inventory/readiness slice closed).
+- Narrative HEAD: `b53a0d1dca3e33cf1198ae0da3b2b866c8ea6a8f` on branch `main`; worktree clean (observed read-only during F4-A-CLOSEOUT verification).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -43,8 +43,9 @@
 | F3-A-C-B | Add auto_commit validation to validate-report | DONE | Post-commit changed-files validation against actual commit/range. Committed/pushed as `b0e8742bb8039e1c50f41cfaf17c9523a3cf27b3`. Full pytest 735 passed in 1018.15s. Post-commit auto_commit dogfood passed. No CLI command changes. |
 | F3 | Trust hardening | DONE / CLOSED | report-state (F3-A-B), auto_commit/commit-range validation (F3-A-C-B), and spec-driven forbidden path extraction (F3-A-D-B) all complete. Final closeout quality gate: ruff/format/mypy/pre-commit pass; targeted trust regressions pass; full pytest 749 passed in 313.34s. |
 | F4-A-A | Narrative read-only tools planning | DONE | Read-only planning completed with Verdict A. Recommended first implementation: `voyage narrative inventory --spec <spec>` read-only helper; no generic RepoControlAdapter contract extension; no Narrative repo writes. |
-| F4-A-B | Add Narrative inventory/readiness command | IN PROGRESS | Add `narrative_inventory()` helper and `voyage narrative inventory` compatibility CLI command. Emits JSON-only summary. No contract changes; no generic repo CLI changes; no Narrative repo modifications; no guarded writes. Commit pending. |
-| F4 | Narrative read-only tools | IN PROGRESS | F4-A-A planning done; F4-A-B first implementation pending. Next: F4-A closeout gate, then F4-B next read-only tool or F5 second adapter proof. |
+| F4-A-B | Add Narrative inventory/readiness command | DONE | Added `narrative_inventory()` helper and `voyage narrative inventory --spec <spec>` compatibility CLI command. Emits JSON-only read-only inventory/readiness summary (scenario files, library/matrix presence, schema-version mix, missing expected files, readiness verdict). RepoControlAdapter contract unchanged; generic `voyage repo ...` unchanged; old narrative commands preserved. Narrative repo not modified. Committed and pushed as `b0fe3f9a89ce68adb9af847646722ce1e847b1a6`. Full pytest 757 passed in 185.00s (measured during F4-A-B). |
+| F4-A | Narrative inventory/readiness slice | DONE / CLOSED | F4-A-A (planning) and F4-A-B (implementation) both closed. Final closeout quality gate (F4-A-CLOSEOUT): ruff pass, format pass, mypy pass, targeted F4 regressions pass, trust regressions pass, pre-commit smoke pass, full pytest 757 passed in 248.22s. Real Narrative repo inventory dogfood was skipped because no suitable existing autoloop spec path was found in the Narrative repo; this is not an implementation blocker. |
+| F4 | Narrative read-only tools | IN PROGRESS | F4-A closed. Awaiting next-step decision: F4-B next read-only Narrative tool vs F5 second adapter proof. Neither has started. |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
@@ -93,4 +94,5 @@
 | F3-A-D-B | yes | yes (pre-commit + post-commit) | ok:true | `1194e33` | yes |
 | F3-CLOSEOUT | yes | yes (pre-commit) | ok:true | `d1a7b5b` | yes |
 | F4-A-A | yes | - | - | - | - |
-| F4-A-B | yes | pending | pending | pending | pending |
+| F4-A-B | yes | yes (pre-commit + post-commit) | ok:true | `b0fe3f9` | yes |
+| F4-A-CLOSEOUT | yes | yes (pre-commit) | pending | pending | pending |
