@@ -274,54 +274,107 @@ def _match_pattern(path: str, pattern: str) -> bool:
 # ── Inventory / readiness ─────────────────────────────────────────────────────
 
 
-def narrative_inventory(spec_path: str | Path) -> dict[str, Any]:
+def _resolve_inventory_source(
+    path: Path,
+) -> tuple[str, Path, Path, Path | None]:
+    """Classify an inventory input path and return canonical source locations.
+
+    Returns ``(source_type, repo_root, scenarios_dir, spec_path)``.
+    ``spec_path`` is set only for autoloop-spec input. Raises ``AutoLoopError``
+    if the path does not exist or cannot be classified.
+    """
+    if not path.exists():
+        raise AutoLoopError(f"inventory source not found: {path}")
+
+    if path.is_file():
+        name = path.name
+        if name == "SCENARIO_LIBRARY.json":
+            scenarios_dir = path.parent
+            repo_root = scenarios_dir.parent if scenarios_dir.name == "scenarios" else scenarios_dir
+            return "library_file", repo_root, scenarios_dir, None
+        if name == "SCENARIO_MATRIX.json":
+            scenarios_dir = path.parent
+            repo_root = scenarios_dir.parent if scenarios_dir.name == "scenarios" else scenarios_dir
+            return "matrix_file", repo_root, scenarios_dir, None
+        spec = AutoLoopSpec.from_file(path)
+        repo_root = Path(spec.target_repo)
+        return "autoloop_spec", repo_root, repo_root / "scenarios", path
+
+    if path.is_dir():
+        if path.name == "scenarios":
+            scenarios_dir = path
+            repo_root = path.parent
+            return "scenarios_dir", repo_root, scenarios_dir, None
+        repo_root = path
+        return "repo_root", repo_root, repo_root / "scenarios", None
+
+    raise AutoLoopError(f"cannot classify inventory source: {path}")
+
+
+def _relative_to_repo(path: Path, repo_root: Path) -> str:
+    """Return a POSIX relative path from repo_root to path."""
+    try:
+        rel = path.relative_to(repo_root)
+    except ValueError:
+        return path.as_posix()
+    return rel.as_posix()
+
+
+def narrative_inventory(source_path: str | Path) -> dict[str, Any]:
     """Read-only inventory/readiness summary of a Narrative target repo.
 
-    Loads the autoloop spec, discovers scenario files, checks for the
-    presence of expected catalog files (``SCENARIO_LIBRARY.json`` and
-    ``SCENARIO_MATRIX.json``), and reports a coarse schema-version mix.
+    Accepts an autoloop spec path, a repo root, a ``scenarios/`` directory,
+    ``SCENARIO_LIBRARY.json``, or ``SCENARIO_MATRIX.json``. Discovers scenario
+    files, checks for expected catalog files, and reports a coarse schema-version
+    mix.
 
-    Never writes, stages, commits, or pushes. Does not execute RenPy or
-    any product runtime.
+    Never writes, stages, commits, or pushes. Does not execute RenPy or any
+    product runtime.
     """
-    spec = AutoLoopSpec.from_file(Path(spec_path))
-    repo_root = str(spec.target_repo)
-    spec_path_str = str(Path(spec_path).resolve())
+    path = Path(source_path).resolve()
+    source_type, repo_root, scenarios_dir, spec_path = _resolve_inventory_source(path)
+
+    source_path_str = str(path)
+    spec_path_str = str(spec_path.resolve()) if spec_path else None
+    repo_root_str = str(repo_root)
 
     errors: list[str] = []
     warnings: list[str] = []
     missing: list[str] = []
 
-    scenarios_dir = spec.target_repo / "scenarios"
     scenario_files: list[str] = []
     if scenarios_dir.is_dir():
-        for path in sorted(scenarios_dir.glob("SCENARIO_*.json")):
-            if path.name in ("SCENARIO_LIBRARY.json", "SCENARIO_MATRIX.json"):
+        for scenario_path in sorted(scenarios_dir.glob("SCENARIO_*.json")):
+            if scenario_path.name in ("SCENARIO_LIBRARY.json", "SCENARIO_MATRIX.json"):
                 continue
-            scenario_files.append(f"scenarios/{path.name}")
+            scenario_files.append(_relative_to_repo(scenario_path, repo_root))
     else:
-        warnings.append(f"scenarios directory not found: {scenarios_dir}")
+        errors.append(f"scenarios directory not found: {scenarios_dir}")
+
+    if not scenario_files and not errors:
+        errors.append(f"no scenario files found in {scenarios_dir}")
 
     library_path = scenarios_dir / "SCENARIO_LIBRARY.json"
     matrix_path = scenarios_dir / "SCENARIO_MATRIX.json"
     library_present = library_path.is_file()
     matrix_present = matrix_path.is_file()
     if not library_present:
-        missing.append("scenarios/SCENARIO_LIBRARY.json")
+        missing.append(_relative_to_repo(library_path, repo_root))
     if not matrix_present:
-        missing.append("scenarios/SCENARIO_MATRIX.json")
+        missing.append(_relative_to_repo(matrix_path, repo_root))
 
     schema_versions: dict[str, int] = {}
+    parse_failures: list[str] = []
     for rel in scenario_files:
-        scene_path = spec.target_repo / rel
+        scene_path = repo_root / rel
         try:
             raw = json.loads(scene_path.read_text(encoding="utf-8"))
         except OSError as exc:
-            errors.append(f"{rel}: cannot read scenario: {exc}")
+            parse_failures.append(f"{rel}: cannot read scenario: {exc}")
             schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
             continue
         except json.JSONDecodeError as exc:
-            errors.append(f"{rel}: JSON parse error: {exc}")
+            parse_failures.append(f"{rel}: JSON parse error: {exc}")
             schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
             continue
 
@@ -331,6 +384,12 @@ def narrative_inventory(spec_path: str | Path) -> dict[str, Any]:
         else:
             version_key = "unknown"
         schema_versions[version_key] = schema_versions.get(version_key, 0) + 1
+
+    if parse_failures:
+        if len(parse_failures) < len(scenario_files):
+            warnings.extend(parse_failures)
+        else:
+            errors.extend(parse_failures)
 
     if errors:
         readiness = "blocked"
@@ -345,12 +404,20 @@ def narrative_inventory(spec_path: str | Path) -> dict[str, Any]:
     return {
         "command": "narrative.inventory",
         "ok": ok,
+        "source_type": source_type,
+        "source_path": source_path_str,
         "spec_path": spec_path_str,
-        "repo_root": repo_root,
+        "repo_root": repo_root_str,
         "scenario_files": scenario_files,
         "scenario_count": len(scenario_files),
-        "library": {"present": library_present, "path": "scenarios/SCENARIO_LIBRARY.json"},
-        "matrix": {"present": matrix_present, "path": "scenarios/SCENARIO_MATRIX.json"},
+        "library": {
+            "present": library_present,
+            "path": _relative_to_repo(library_path, repo_root),
+        },
+        "matrix": {
+            "present": matrix_present,
+            "path": _relative_to_repo(matrix_path, repo_root),
+        },
         "schema_versions": schema_versions,
         "missing_expected_files": sorted(missing),
         "warnings": warnings,

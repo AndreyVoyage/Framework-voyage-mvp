@@ -515,6 +515,124 @@ class TestNarrativeInventory:
         assert any("JSON parse error" in error for error in result["errors"])
         assert result["schema_versions"].get("unknown") == 1
 
+    def test_repo_root_inventory_ready(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        before_files = sorted(p.name for p in repo.rglob("*") if p.is_file())
+
+        result = narrative_inventory(repo)
+
+        after_files = sorted(p.name for p in repo.rglob("*") if p.is_file())
+        assert after_files == before_files
+
+        assert result["command"] == "narrative.inventory"
+        assert result["source_type"] == "repo_root"
+        assert result["source_path"] == str(repo.resolve())
+        assert result["spec_path"] is None
+        assert result["repo_root"] == str(repo.resolve())
+        assert result["ok"] is True
+        assert result["scenario_files"] == ["scenarios/SCENARIO_025_TEST.json"]
+        assert result["scenario_count"] == 1
+        assert result["library"]["present"] is True
+        assert result["matrix"]["present"] is True
+        assert result["readiness"] == "ready"
+
+    def test_scenarios_dir_inventory(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+
+        result = narrative_inventory(repo / "scenarios")
+
+        assert result["source_type"] == "scenarios_dir"
+        assert result["ok"] is True
+        assert result["scenario_count"] == 1
+        assert result["library"]["present"] is True
+        assert result["matrix"]["present"] is False
+
+    def test_library_file_inventory(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        result = narrative_inventory(repo / "scenarios" / "SCENARIO_LIBRARY.json")
+
+        assert result["source_type"] == "library_file"
+        assert result["ok"] is True
+        assert result["scenario_count"] == 1
+        assert result["library"]["present"] is True
+        assert result["matrix"]["present"] is True
+
+    def test_matrix_file_inventory(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        result = narrative_inventory(repo / "scenarios" / "SCENARIO_MATRIX.json")
+
+        assert result["source_type"] == "matrix_file"
+        assert result["ok"] is True
+        assert result["scenario_count"] == 1
+        assert result["library"]["present"] is True
+        assert result["matrix"]["present"] is True
+
+    def test_source_mode_schema_version_mix(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        v2_scene = {**_valid_scene(), "schema_version": "2.0"}
+        v1_scene = {**_valid_scene("SC_026"), "version": "1.0"}
+        v1_scene.pop("schema_version", None)
+        unknown_scene = {**_valid_scene("SC_027")}
+        unknown_scene.pop("schema_version", None)
+        unknown_scene.pop("version", None)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(v2_scene), encoding="utf-8"
+        )
+        (repo / "scenarios" / "SCENARIO_026_TEST.json").write_text(
+            json.dumps(v1_scene), encoding="utf-8"
+        )
+        (repo / "scenarios" / "SCENARIO_027_TEST.json").write_text(
+            json.dumps(unknown_scene), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        result = narrative_inventory(repo)
+
+        assert result["source_type"] == "repo_root"
+        assert result["ok"] is True
+        assert result["schema_versions"].get("2.0") == 1
+        assert result["schema_versions"].get("1.0") == 1
+        assert result["schema_versions"].get("unknown") == 1
+        assert result["scenario_count"] == 3
+
+    def test_repo_root_missing_scenarios_blocked(self, tmp_path: Path) -> None:
+        repo = tmp_path / "narrative"
+        repo.mkdir()
+
+        result = narrative_inventory(repo)
+
+        assert result["source_type"] == "repo_root"
+        assert result["ok"] is False
+        assert result["readiness"] == "blocked"
+        assert any("scenarios directory not found" in error for error in result["errors"])
+
+    def test_invalid_source_path_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(AutoLoopError):
+            narrative_inventory(tmp_path / "nonexistent")
+
 
 class TestRunArcCheck:
     def _setup(self, tmp_path: Path) -> tuple[Path, Path]:

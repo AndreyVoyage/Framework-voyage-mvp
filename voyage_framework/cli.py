@@ -975,8 +975,37 @@ def _narrative_inventory(args: argparse.Namespace) -> int:
     """Read-only Narrative inventory/readiness summary (does not modify the repo)."""
     from voyage_framework.core.narrative_adapter import narrative_inventory
 
+    spec: str | None = getattr(args, "spec", None)
+    repo: str | None = getattr(args, "repo", None)
+    if spec and repo:
+        print(
+            json.dumps(
+                {
+                    "command": "narrative.inventory",
+                    "ok": False,
+                    "error": "--spec and --repo are mutually exclusive",
+                },
+                indent=2,
+            )
+        )
+        return 1
+    if not spec and not repo:
+        print(
+            json.dumps(
+                {
+                    "command": "narrative.inventory",
+                    "ok": False,
+                    "error": "--spec or --repo is required",
+                },
+                indent=2,
+            )
+        )
+        return 1
+
+    source = spec if spec is not None else repo
+    assert source is not None
     try:
-        result = narrative_inventory(Path(args.spec))
+        result = narrative_inventory(Path(source))
     except AutoLoopError as exc:
         print(
             json.dumps(
@@ -1412,8 +1441,17 @@ def main() -> int:
     )
     narrative_inventory_parser.add_argument(
         "--spec",
-        required=True,
+        required=False,
         help="Path to the autoloop JSON spec",
+    )
+    narrative_inventory_parser.add_argument(
+        "--repo",
+        required=False,
+        help=(
+            "Path to the Narrative repo root (or scenarios directory, or "
+            "SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json). Reads scenario files "
+            "and catalog files without modifying the repo."
+        ),
     )
 
     narrative_scene_validate_parser = narrative_subparsers.add_parser(

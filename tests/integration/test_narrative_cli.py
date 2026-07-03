@@ -207,6 +207,10 @@ def _inventory_setup(tmp_path: Path) -> tuple[Path, Path]:
     return repo, spec_file
 
 
+def _write_catalog(repo: Path, name: str) -> None:
+    (repo / "scenarios" / name).write_text("{}", encoding="utf-8")
+
+
 class TestNarrativeCLIHelp:
     def test_narrative_help(self) -> None:
         result = _run(["narrative", "--help"])
@@ -241,6 +245,7 @@ class TestNarrativeCLIHelp:
         result = _run(["narrative", "inventory", "--help"])
         assert result.returncode == 0
         assert "--spec" in result.stdout
+        assert "--repo" in result.stdout
         assert "read-only" in result.stdout.lower()
 
 
@@ -261,6 +266,25 @@ class TestNarrativeInventoryCLI:
         assert data["scenario_files"] == ["scenarios/SCENARIO_025_TEST.json"]
         assert "readiness" in data
 
+    def test_inventory_repo_returns_ok_true(self, tmp_path: Path) -> None:
+        repo, _spec_file = _inventory_setup(tmp_path)
+        (repo / "scenarios" / "SCENARIO_025_TEST.json").write_text(
+            json.dumps(_valid_scene()), encoding="utf-8"
+        )
+        _write_catalog(repo, "SCENARIO_LIBRARY.json")
+        _write_catalog(repo, "SCENARIO_MATRIX.json")
+
+        result = _run(["narrative", "inventory", "--repo", str(repo)])
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["source_type"] == "repo_root"
+        assert data["ok"] is True
+        assert data["scenario_count"] == 1
+        assert data["library"]["present"] is True
+        assert data["matrix"]["present"] is True
+
     def test_inventory_missing_spec_returns_ok_false(self, tmp_path: Path) -> None:
         missing_spec = tmp_path / "missing.json"
 
@@ -270,6 +294,36 @@ class TestNarrativeInventoryCLI:
         data = json.loads(result.stdout)
         assert data["command"] == "narrative.inventory"
         assert data["ok"] is False
+
+    def test_inventory_missing_repo_returns_ok_false(self, tmp_path: Path) -> None:
+        missing_repo = tmp_path / "missing_repo"
+
+        result = _run(["narrative", "inventory", "--repo", str(missing_repo)])
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["ok"] is False
+
+    def test_inventory_missing_both_args_fails(self) -> None:
+        result = _run(["narrative", "inventory"])
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["ok"] is False
+        assert "--spec or --repo is required" in data["error"]
+
+    def test_inventory_both_args_fails(self, tmp_path: Path) -> None:
+        repo, spec_file = _inventory_setup(tmp_path)
+
+        result = _run(["narrative", "inventory", "--spec", str(spec_file), "--repo", str(repo)])
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["command"] == "narrative.inventory"
+        assert data["ok"] is False
+        assert "mutually exclusive" in data["error"]
 
 
 class TestNarrativeSceneValidateCLI:

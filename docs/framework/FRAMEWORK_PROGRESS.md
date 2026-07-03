@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-03)
-- Framework HEAD / origin/main: `b0fe3f9a89ce68adb9af847646722ce1e847b1a6` (F4-A narrative inventory/readiness slice closed).
-- Narrative HEAD: `b53a0d1dca3e33cf1198ae0da3b2b866c8ea6a8f` on branch `main`; worktree clean (observed read-only during F4-A-CLOSEOUT verification).
+- Framework HEAD / origin/main: `38fb95991e5cb856ef283ce49f354452ba3de75a` (F4-A closed; F4-B-A planning done; F4-B-B implementation pending).
+- Narrative HEAD: `4f13f3b80e4d4be458b049be4fd15bed502636e9` on branch `feature/n5f-hybrid-json-path-design`; worktree clean (observed read-only during F4-B-B verification).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -45,7 +45,10 @@
 | F4-A-A | Narrative read-only tools planning | DONE | Read-only planning completed with Verdict A. Recommended first implementation: `voyage narrative inventory --spec <spec>` read-only helper; no generic RepoControlAdapter contract extension; no Narrative repo writes. |
 | F4-A-B | Add Narrative inventory/readiness command | DONE | Added `narrative_inventory()` helper and `voyage narrative inventory --spec <spec>` compatibility CLI command. Emits JSON-only read-only inventory/readiness summary (scenario files, library/matrix presence, schema-version mix, missing expected files, readiness verdict). RepoControlAdapter contract unchanged; generic `voyage repo ...` unchanged; old narrative commands preserved. Narrative repo not modified. Committed and pushed as `b0fe3f9a89ce68adb9af847646722ce1e847b1a6`. Full pytest 757 passed in 185.00s (measured during F4-A-B). |
 | F4-A | Narrative inventory/readiness slice | DONE / CLOSED | F4-A-A (planning) and F4-A-B (implementation) both closed. Final closeout quality gate (F4-A-CLOSEOUT): ruff pass, format pass, mypy pass, targeted F4 regressions pass, trust regressions pass, pre-commit smoke pass, full pytest 757 passed in 248.22s. Real Narrative repo inventory dogfood was skipped because no suitable existing autoloop spec path was found in the Narrative repo; this is not an implementation blocker. |
-| F4 | Narrative read-only tools | IN PROGRESS | F4-A closed. Awaiting next-step decision: F4-B next read-only Narrative tool vs F5 second adapter proof. Neither has started. |
+| F4-A-CLOSEOUT | Narrative inventory/readiness closeout | DONE | Closed F4-A; updated progress docs. Committed and pushed as `38fb95991e5cb856ef283ce49f354452ba3de75a`. |
+| F4-B-A | Narrative spec/source discovery planning | DONE | Read-only planning completed with Verdict A. Real Narrative repo has scenario/library/matrix files but no autoloop spec; recommended repo-root/source-mode inventory support. |
+| F4-B-B | Extend inventory with repo-root/source mode | IN PROGRESS | Extend `narrative_inventory()` to accept repo root, scenarios directory, SCENARIO_LIBRARY.json, SCENARIO_MATRIX.json, or autoloop spec. Add `voyage narrative inventory --repo <repo>` while preserving `--spec`. No RepoControlAdapter contract changes; no Narrative repo writes; no guarded writes. Commit pending. |
+| F4 | Narrative read-only tools | IN PROGRESS | F4-A closed; F4-B-A planning done; F4-B-B implementation pending. Next: F4-B closeout, then decide F4-C vs F5. |
 | F5 | Second adapter (multi-repo) | PLANNED | e.g. SkillTracer, read-only. |
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
@@ -95,4 +98,6 @@
 | F3-CLOSEOUT | yes | yes (pre-commit) | ok:true | `d1a7b5b` | yes |
 | F4-A-A | yes | - | - | - | - |
 | F4-A-B | yes | yes (pre-commit + post-commit) | ok:true | `b0fe3f9` | yes |
-| F4-A-CLOSEOUT | yes | yes (pre-commit) | pending | pending | pending |
+| F4-A-CLOSEOUT | yes | yes (pre-commit) | ok:true | `38fb959` | yes |
+| F4-B-A | yes | - | - | - | - |
+| F4-B-B | yes | pending | pending | pending | pending |
