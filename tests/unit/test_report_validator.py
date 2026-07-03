@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -10,6 +12,7 @@ from typing import Any
 import pytest
 
 import voyage_framework.core.report_validator as rv
+from voyage_framework.core._git_utils import _GIT_LOCAL_ENV_VARS
 from voyage_framework.core.report_validator import ReportValidatorError, validate_report
 
 HEAD = "1" * 40
@@ -343,3 +346,396 @@ def test_multi_repo_mismatch_is_scoped_to_repo_name(
     assert result.ok is False
     assert result.repos_checked == ["framework", "narrative"]
     assert any(mismatch.repo == "narrative" for mismatch in result.mismatches)
+
+
+"""
+Tests for auto_commit / commit-range validation.
+"""
+
+
+def _clean_env() -> dict[str, str]:
+    env = {k: v for k, v in os.environ.items() if k not in _GIT_LOCAL_ENV_VARS}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+        env=_clean_env(),
+    )
+
+
+def _init_repo(path: Path) -> str:
+    path.mkdir(parents=True)
+    _git(path, "init", "--initial-branch=main")
+    (path / "README.md").write_text("repo\n", encoding="utf-8")
+    _git(path, "add", "README.md")
+    _git(
+        path,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test User",
+        "commit",
+        "-m",
+        "init",
+    )
+    _git(path, "remote", "add", "origin", str(path))
+    _git(path, "update-ref", "refs/remotes/origin/main", "HEAD")
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=path,
+        text=True,
+        env=_clean_env(),
+    ).strip()
+
+
+def _make_commit(repo: Path, filename: str, content: str) -> str:
+    file_path = repo / filename
+    file_path.write_text(content, encoding="utf-8")
+    _git(repo, "add", filename)
+    _git(
+        repo,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test User",
+        "commit",
+        "-m",
+        f"add {filename}",
+    )
+    head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        text=True,
+        env=_clean_env(),
+    ).strip()
+    _git(repo, "update-ref", "refs/remotes/origin/main", head)
+    return head
+
+
+def _auto_commit_report(
+    repo: Path,
+    before: str,
+    after: str,
+    claimed_files: list[str],
+    **overrides: Any,
+) -> dict[str, Any]:
+    return _report(
+        repo,
+        repo_overrides={
+            "expected_head": after,
+            "expected_origin_main": after,
+            "claimed_clean": True,
+            "claimed_changed_files": claimed_files,
+            "claimed_staged_files": [],
+            "auto_commit_before": before,
+            "auto_commit_after": after,
+            **overrides,
+        },
+    )
+
+
+def test_auto_commit_range_with_matching_files_passes(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, after, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert result.verdict_recommendation == "A"
+    assert result.mismatches == []
+
+
+def test_auto_commit_single_commit_with_matching_files_passes(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    after = _make_commit(repo, "single.txt", "single\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _report(
+            repo,
+            repo_overrides={
+                "expected_head": after,
+                "expected_origin_main": after,
+                "claimed_clean": True,
+                "claimed_changed_files": ["single.txt"],
+                "claimed_staged_files": [],
+                "auto_commit_after": after,
+            },
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert result.verdict_recommendation == "A"
+
+
+def test_auto_commit_worktree_dirty_but_range_matches_passes(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    (repo / "untracked.txt").write_text("noise\n", encoding="utf-8")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(
+            repo,
+            before,
+            after,
+            ["feature.txt"],
+            claimed_clean=False,
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert result.verdict_recommendation == "B"
+    assert any("post-commit report claims clean=false" in warning for warning in result.warnings)
+
+
+def test_auto_commit_changed_file_mismatch_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, after, ["wrong.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(mismatch.check == "auto_commit_changed_files" for mismatch in result.mismatches)
+
+
+def test_auto_commit_invalid_after_hash_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    _make_commit(repo, "feature.txt", "feature\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, "not-a-hash", ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(mismatch.check == "auto_commit_after_hash_format" for mismatch in result.mismatches)
+
+
+def test_auto_commit_invalid_before_hash_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, "not-a-hash", after, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(mismatch.check == "auto_commit_before_hash_format" for mismatch in result.mismatches)
+
+
+def test_auto_commit_missing_after_object_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    _make_commit(repo, "feature.txt", "feature\n")
+    missing = "0" * 40
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, missing, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(
+        mismatch.check == "auto_commit_after_object_exists" for mismatch in result.mismatches
+    )
+
+
+def test_auto_commit_missing_before_object_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    missing = "0" * 40
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, missing, after, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(
+        mismatch.check == "auto_commit_before_object_exists" for mismatch in result.mismatches
+    )
+
+
+def test_auto_commit_after_not_head_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    _make_commit(repo, "second.txt", "second\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, after, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(mismatch.check == "auto_commit_after_equals_head" for mismatch in result.mismatches)
+
+
+def test_auto_commit_staged_files_post_commit_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    (repo / "staged.txt").write_text("staged\n", encoding="utf-8")
+    _git(repo, "add", "staged.txt")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, after, ["feature.txt"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(mismatch.check == "auto_commit_staged_files" for mismatch in result.mismatches)
+
+
+def test_auto_commit_claimed_staged_non_empty_produces_warning(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(
+            repo,
+            before,
+            after,
+            ["feature.txt"],
+            claimed_staged_files=["old-staged.txt"],
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert any(
+        "staged_files entry is not currently dirty" in warning for warning in result.warnings
+    )
+
+
+def test_auto_commit_merge_commit_without_before_warns(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    _make_commit(repo, "branch.txt", "branch\n")
+    _git(repo, "checkout", "-b", "side")
+    _make_commit(repo, "side.txt", "side\n")
+    _git(repo, "checkout", "main")
+    _make_commit(repo, "merge.txt", "merge\n")
+    _git(repo, "merge", "--no-ff", "side", "-m", "merge side")
+    _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    after_merge = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        text=True,
+        env=_clean_env(),
+    ).strip()
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _report(
+            repo,
+            repo_overrides={
+                "expected_head": after_merge,
+                "expected_origin_main": after_merge,
+                "claimed_clean": True,
+                "claimed_changed_files": ["merge.txt", "side.txt"],
+                "claimed_staged_files": [],
+                "auto_commit_after": after_merge,
+            },
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert any("merge commit" in warning for warning in result.warnings)
+
+
+def test_auto_commit_forbidden_path_in_range_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, ".env", "secret\n")
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _auto_commit_report(repo, before, after, [".env"]),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is False
+    assert any(
+        "forbidden_paths:auto_commit_changed_files" in mismatch.check
+        for mismatch in result.mismatches
+    )
+
+
+def test_root_commit_single_commit_mode_passes(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    path = tmp_path / "repo"
+    path.mkdir(parents=True)
+    _git(path, "init", "--initial-branch=main")
+    (path / "README.md").write_text("repo\n", encoding="utf-8")
+    _git(path, "add", "README.md")
+    _git(
+        path,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test User",
+        "commit",
+        "-m",
+        "init",
+    )
+    after = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        text=True,
+        env=_clean_env(),
+    ).strip()
+    report_path = _write_report(
+        tmp_path / "report.json",
+        _report(
+            repo,
+            repo_overrides={
+                "expected_head": after,
+                "expected_origin_main": None,
+                "claimed_clean": True,
+                "claimed_changed_files": ["README.md"],
+                "claimed_staged_files": [],
+                "auto_commit_after": after,
+            },
+        ),
+    )
+
+    result = validate_report(report_path)
+
+    assert result.ok is True
+    assert result.verdict_recommendation == "A"

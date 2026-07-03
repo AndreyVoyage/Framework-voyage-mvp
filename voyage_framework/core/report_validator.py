@@ -9,7 +9,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from voyage_framework.core._git_utils import _git, _git_status, _git_stdout
+from voyage_framework.core._git_utils import (
+    _git,
+    _git_changed_files_in_commit,
+    _git_changed_files_in_range,
+    _git_commit_object_exists,
+    _git_parent_commits,
+    _git_status,
+    _git_stdout,
+)
 
 SUPPORTED_SCHEMA = "voyage.report.v1"
 FULL_HASH_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -83,6 +91,8 @@ class RepoClaim:
     claimed_changed_files: list[str]
     claimed_staged_files: list[str]
     repo_role: str
+    auto_commit_after: str | None
+    auto_commit_before: str | None
 
 
 @dataclass(frozen=True)
@@ -250,14 +260,28 @@ def _validate_repo(
     elif repo.claimed_clean is None:
         warnings.append(f"{repo.name}: missing clean claim")
 
-    _compare_file_sets(
-        repo,
-        "changed_files",
-        repo.claimed_changed_files,
-        actual_changed,
-        mismatches,
-        warnings,
-    )
+    auto_commit_enabled = repo.auto_commit_after is not None and repo.auto_commit_after != ""
+
+    if auto_commit_enabled:
+        _validate_auto_commit(
+            repo,
+            path,
+            head,
+            actual_dirty,
+            actual_staged,
+            mismatches,
+            warnings,
+        )
+    else:
+        _compare_file_sets(
+            repo,
+            "changed_files",
+            repo.claimed_changed_files,
+            actual_changed,
+            mismatches,
+            warnings,
+        )
+
     _compare_file_sets(
         repo,
         "staged_files",
@@ -279,10 +303,15 @@ def _validate_repo(
         )
 
     forbidden = _forbidden_patterns(repo.repo_role)
-    for source, paths in (
+    forbidden_sources = [
         ("claimed_changed_files", repo.claimed_changed_files),
         ("actual_dirty_files", actual_dirty),
-    ):
+    ]
+    if auto_commit_enabled:
+        actual_auto_commit_files = _auto_commit_changed_files(repo, path)
+        forbidden_sources.append(("auto_commit_changed_files", actual_auto_commit_files))
+
+    for source, paths in forbidden_sources:
         hits = sorted(path for path in paths if _matches_any(path, forbidden))
         if hits:
             mismatches.append(
@@ -319,6 +348,126 @@ def _validate_hash_claim(
         return
     if actual != claimed:
         mismatches.append(ValidationMismatch(repo.name, check, claimed, actual, "error"))
+
+
+def _auto_commit_changed_files(repo: RepoClaim, path: Path) -> list[str]:
+    """Return actual changed files for the configured auto_commit range/commit."""
+    if repo.auto_commit_before is not None and repo.auto_commit_before != "":
+        return _git_changed_files_in_range(
+            path, repo.auto_commit_before, repo.auto_commit_after or ""
+        )
+    return _git_changed_files_in_commit(path, repo.auto_commit_after or "")
+
+
+def _validate_auto_commit(
+    repo: RepoClaim,
+    path: Path,
+    head: str,
+    actual_dirty: list[str],
+    actual_staged: list[str],
+    mismatches: list[ValidationMismatch],
+    warnings: list[str],
+) -> None:
+    """Validate post-commit auto_commit claims.
+
+    Assumes repo.auto_commit_after is present and non-empty.
+    """
+    after = repo.auto_commit_after or ""
+    before = repo.auto_commit_before or None
+
+    if not FULL_HASH_RE.fullmatch(after):
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_after_hash_format",
+                after,
+                head,
+                "error",
+            )
+        )
+        return
+
+    if before is not None and not FULL_HASH_RE.fullmatch(before):
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_before_hash_format",
+                before,
+                head,
+                "error",
+            )
+        )
+        return
+
+    if not _git_commit_object_exists(path, after):
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_after_object_exists",
+                after,
+                "unknown",
+                "error",
+            )
+        )
+        return
+
+    if before is not None and not _git_commit_object_exists(path, before):
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_before_object_exists",
+                before,
+                "unknown",
+                "error",
+            )
+        )
+        return
+
+    if after != head:
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_after_equals_head",
+                after,
+                head,
+                "error",
+            )
+        )
+
+    if before is None:
+        parents = _git_parent_commits(path, after)
+        if len(parents) > 1:
+            warnings.append(
+                f"{repo.name}: auto_commit_after is a merge commit without explicit "
+                "auto_commit_before; using single-commit diff-tree against first parent"
+            )
+
+    actual_auto_commit_files = _auto_commit_changed_files(repo, path)
+
+    _compare_file_sets(
+        repo,
+        "auto_commit_changed_files",
+        repo.claimed_changed_files,
+        actual_auto_commit_files,
+        mismatches,
+        warnings,
+    )
+
+    if actual_staged:
+        mismatches.append(
+            ValidationMismatch(
+                repo.name,
+                "auto_commit_staged_files",
+                "none",
+                ", ".join(actual_staged),
+                "error",
+            )
+        )
+
+    if repo.claimed_clean is False and actual_dirty:
+        warnings.append(f"{repo.name}: post-commit report claims clean=false with dirty worktree")
+    elif repo.claimed_clean is False and not actual_dirty:
+        warnings.append(f"{repo.name}: post-commit report claims clean=false but worktree is clean")
 
 
 def _compare_file_sets(
@@ -364,6 +513,8 @@ def _repo_claim(raw: object, index: int) -> RepoClaim:
         claimed_changed_files=_string_list(raw.get("claimed_changed_files", []), name),
         claimed_staged_files=_string_list(raw.get("claimed_staged_files", []), name),
         repo_role=str(raw.get("repo_role", "generic")),
+        auto_commit_after=_optional_str(raw.get("auto_commit_after")),
+        auto_commit_before=_optional_str(raw.get("auto_commit_before")),
     )
 
 

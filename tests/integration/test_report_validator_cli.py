@@ -123,3 +123,105 @@ def test_validate_report_cli_wrong_schema_returns_error_json(tmp_path: Path) -> 
     assert payload["command"] == "validate-report"
     assert payload["ok"] is False
     assert "unsupported schema" in payload["error"]
+
+
+"""
+Integration tests for auto_commit / commit-range validation via CLI.
+"""
+
+
+def _make_commit(repo: Path, filename: str, content: str) -> str:
+    file_path = repo / filename
+    file_path.write_text(content, encoding="utf-8")
+    _git(repo, "add", filename)
+    _git(repo, "commit", "-m", f"add {filename}")
+    head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "update-ref", "refs/remotes/origin/main", head)
+    return head
+
+
+def _auto_commit_report(
+    repo: Path, before: str, after: str, claimed_files: list[str]
+) -> dict[str, Any]:
+    return {
+        "schema": "voyage.report.v1",
+        "task_id": "T-CLI-AUTO",
+        "timestamp": "2026-06-30T00:00:00Z",
+        "repos": [
+            {
+                "name": "framework",
+                "path": str(repo),
+                "expected_branch": "main",
+                "expected_head": after,
+                "expected_origin_main": after,
+                "claimed_clean": True,
+                "claimed_changed_files": claimed_files,
+                "claimed_staged_files": [],
+                "repo_role": "framework",
+                "auto_commit_before": before,
+                "auto_commit_after": after,
+            }
+        ],
+        "safety": {},
+        "claimed_verdict": "A",
+    }
+
+
+def test_validate_report_cli_auto_commit_range_passes(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(_auto_commit_report(repo, before, after, ["feature.txt"])),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(report)
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 0
+    assert payload["command"] == "validate-report"
+    assert payload["ok"] is True
+    assert payload["verdict_recommendation"] == "A"
+    assert payload["mismatches"] == []
+
+
+def test_validate_report_cli_auto_commit_range_mismatch_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    after = _make_commit(repo, "feature.txt", "feature\n")
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(_auto_commit_report(repo, before, after, ["wrong.txt"])),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(report)
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 1
+    assert payload["ok"] is False
+    assert any(
+        mismatch["check"] == "auto_commit_changed_files" for mismatch in payload["mismatches"]
+    )
+
+
+def test_validate_report_cli_auto_commit_invalid_hash_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    before = _init_repo(repo)
+    _make_commit(repo, "feature.txt", "feature\n")
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(_auto_commit_report(repo, before, "not-a-hash", ["feature.txt"])),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(report)
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 1
+    assert payload["ok"] is False
+    assert any(
+        mismatch["check"] == "auto_commit_after_hash_format" for mismatch in payload["mismatches"]
+    )

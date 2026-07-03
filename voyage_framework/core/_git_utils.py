@@ -82,6 +82,38 @@ def _git_name_only(repo: Path, *args: str) -> list[str]:
     return sorted(_normalize_repo_path(line) for line in result.stdout.splitlines() if line.strip())
 
 
+def _git_commit_object_exists(repo: Path, sha: str) -> bool:
+    """Return True iff *sha* resolves to a commit object in *repo*."""
+    result = _git(repo, "cat-file", "-t", sha)
+    return result.returncode == 0 and result.stdout.strip() == "commit"
+
+
+def _git_changed_files_in_commit(repo: Path, sha: str) -> list[str]:
+    """Return normalized paths changed in a single commit (handles root commits)."""
+    result = _git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha)
+    if result.returncode != 0:
+        return []
+    return sorted(_normalize_repo_path(line) for line in result.stdout.splitlines() if line.strip())
+
+
+def _git_changed_files_in_range(repo: Path, before: str, after: str) -> list[str]:
+    """Return normalized paths changed between *before* and *after*."""
+    result = _git(repo, "diff", "--name-only", f"{before}..{after}")
+    if result.returncode != 0:
+        return []
+    return sorted(_normalize_repo_path(line) for line in result.stdout.splitlines() if line.strip())
+
+
+def _git_parent_commits(repo: Path, sha: str) -> list[str]:
+    """Return parent commit hashes for *sha* (empty for root commits)."""
+    result = _git(repo, "rev-list", "--parents", "-n", "1", sha)
+    if result.returncode != 0:
+        return []
+    parts = result.stdout.strip().split()
+    # First token is the commit itself, remaining tokens are parents.
+    return parts[1:] if len(parts) > 1 else []
+
+
 def collect_repo_state(repo_path: str | Path) -> dict[str, Any]:
     """Return a JSON-serializable, read-only snapshot of a git repository state.
 
