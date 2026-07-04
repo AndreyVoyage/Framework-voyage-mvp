@@ -107,4 +107,4 @@
 | F4-B-B | yes | yes (pre-commit + post-commit) | ok:true | `24ccdd2` | yes |
 | F4-B-CLOSEOUT | yes | yes (pre-commit) | ok:true | `cf3ccbf` | yes |
 | F5-A-A | yes | - | - | - | - |
-| F5-A-B | yes | yes (pre-commit) | ok:true | `90b050e` | pending |
+| F5-A-B | yes | yes (pre-commit + post-commit) | ok:true | `90b050e` | yes |
