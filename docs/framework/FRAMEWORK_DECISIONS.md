@@ -65,3 +65,55 @@
   - In-place role mutation would make project behavior non-reproducible.
   - Versioning and pinning give dependency-lockfile style safety: reproducibility, explicit upgrades, auditability, and rollback clarity.
   - Existing trust/guarded-write machinery should become the substrate for safe role evolution.
+
+## D-009 - Project Adapter Ownership
+- Date: 2026-07-04, Status: Accepted (future architecture principle; no implementation yet)
+- Decision:
+  - Framework owns adapter contracts, loading/validation infrastructure, trust engine, reports, guardrails, and gated workflows.
+  - Consuming projects or external plugin packages own project-specific adapters, project-specific checks, and domain-specific spec-plan logic.
+  - Framework core must not accumulate product-specific adapters for every consuming project.
+  - Product-specific adapters should ultimately live project-side or plugin-side.
+  - Built-in product adapters are allowed only as reference adapters, bootstrap examples, or migration bridges.
+  - The current Narrative adapter in Framework core is a reference / first-real-product bridge, not the long-term pattern for 20+ projects.
+  - Future adapter loading should allow project-side or plugin-side adapters to be discovered, validated, and run through the Framework trust engine.
+  - Adapter versions should be pinnable by consuming projects, following the same dependency-management philosophy as D-010 role versioning.
+  - Framework must keep product content ownership outside core: no story/runtime/business-domain logic in core.
+  - Adapter extraction must not happen until an adapter loader/versioning path exists.
+  - Existing built-in adapters remain supported until a safe migration path exists.
+- Rationale:
+  - The `RepoControlAdapter` contract and the local adapter proof show that adapters can be interchangeable.
+  - If every product-specific adapter is added directly to Framework core, the Framework will become coupled to product domains and will not scale to many projects.
+  - Project-side/plugin-side ownership keeps the Framework generic while still allowing deep project-specific checks.
+- Consequences:
+  - Narrative-specific code in core is accepted as a reference bridge for now.
+  - Future work should introduce adapter loader/versioning before extracting Narrative-specific adapter code.
+  - Framework remains responsible for verification and trust, not product semantics.
+  - This decision complements D-010: projects should pin both role versions and adapter versions.
+
+## D-011 - LangGraph orchestration is a reserved optional adapter (F8+), never core
+- Date: 2026-07-04, Status: Accepted / Reservation Decision; activation deferred to F8+
+- Decision:
+  - `voyage_framework/langgraph_tools/` is reserved as a future optional orchestration adapter for the gated control-loop / scheduled runtime at F8+.
+  - LangGraph must never be the Voyage core runtime.
+  - LangGraph must never auto-run agents.
+  - LangGraph must stay an opt-in extra, behind the adapter boundary, and human-gated.
+  - It must not be deleted as part of legacy cleanup.
+- Rules:
+  - `langgraph_tools/` is KEEP / reserved.
+  - LangGraph may be used only as an optional orchestration adapter.
+  - LangGraph must not become core runtime.
+  - LangGraph must not bypass `validate-report`, `report-state`, human approval, or guarded workflows.
+  - LangGraph activation is F8+ only, not part of F4/F5/F6/F7.
+  - `simple_graph` fallback and `checkpoint_adapter` may be preserved as useful infrastructure.
+  - `checkpoint_adapter` is recognized as future infrastructure for checkpoint/replay/control-loop state, not as current autonomy.
+  - `agents/langgraph_runtime` requires separate review before cleanup because it may wire legacy CLI commands to `langgraph_tools`.
+  - `voyage_framework_v4_mvp/` remains a separate cleanup candidate and is not protected by this decision.
+- Rationale:
+  - The original constraint is not that LangGraph is banned. The constraint is that LangGraph must not become the core runtime and must not auto-run agents.
+  - As an optional adapter behind human gates, it may become useful later for the scheduled control-loop / orchestration phase.
+  - Deleting tested graph infrastructure during cleanup would remove a potentially useful future asset.
+- Consequences:
+  - Legacy cleanup must not delete `langgraph_tools/`.
+  - Any activation of LangGraph requires a future F8+ design gate.
+  - The Framework remains deterministic and human-gated in current phases.
+  - This decision is consistent with keeping autonomy last.

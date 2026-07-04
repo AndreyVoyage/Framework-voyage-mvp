@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `fd1ecccb811d16d45a5e34890c8a657db2eef9b4` (F5-A local adapter proof closed; D-010 captured).
-- Narrative HEAD: `29f9bdd3811ab016274efcec20334811dc94e8d0` on branch `main`; worktree clean (observed read-only during F5-A-CLOSEOUT verification).
+- Framework HEAD / origin/main: `cbe9f767e9a762e7038b6d29bf9ea8c486600bf4` (F4-C read-only spec-plan closed; D-009/D-010/D-011 captured).
+- Narrative HEAD: `d90c5caf4869ff00ef8792d7d8191a04b6cc90ab` on branch `main`; worktree clean (observed read-only during F4-C-CLOSEOUT verification; branch/HEAD drifted externally after F4-C-B baseline).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -49,10 +49,10 @@
 | F4-B-A | Narrative spec/source discovery planning | DONE | Read-only planning completed with Verdict A. Real Narrative repo has scenario/library/matrix files but no autoloop spec; recommended repo-root/source-mode inventory support. |
 | F4-B-B | Extend inventory with repo-root/source mode | DONE | Added repo-root/source-mode inventory support: `narrative_inventory()` now accepts autoloop spec, repo root, scenarios directory, SCENARIO_LIBRARY.json, or SCENARIO_MATRIX.json. Added `voyage narrative inventory --repo <repo>` while preserving `--spec`. RepoControlAdapter contract unchanged; generic `voyage repo ...` unchanged; old narrative commands preserved; Narrative repo not modified. Real Narrative dogfood passed: `voyage narrative inventory --repo C:\\DEV\\Narrative\\voyage-narrative-engine` -> ok true, readiness ready, source_type repo_root, scenario_count 29, library/matrix present. F4-B-B run reported a transient Narrative branch name difference (`feature/n5f-hybrid-json-path-design` vs `main`) with unchanged HEAD/worktree; this closeout re-verified branch `main`, HEAD `4f13f3b`, worktree clean. Committed and pushed as `24ccdd2f4074a359b52ad15d8952560c60ae4e3f`. Full pytest 768 passed in 410.01s (measured during F4-B-CLOSEOUT). |
 | F4-B | Repo-root/source-mode inventory slice | DONE / CLOSED | F4-B-A (planning) and F4-B-B (implementation) both closed. Final closeout quality gate (F4-B-CLOSEOUT): ruff pass, format pass, mypy pass, targeted F4 regressions pass, trust regressions pass, real Narrative inventory dogfood pass, pre-commit smoke pass, full pytest 768 passed in 410.01s. |
-| F4 | Narrative read-only tools | DONE / CLOSED | F4-A and F4-B closed; F4-B-CLOSEOUT committed at `cf3ccbf`. |
+| F4 | Narrative read-only tools | DONE / CLOSED | F4-A, F4-B, and F4-C closed; F4-C-CLOSEOUT pending commit. |
 | F4-B-CLOSEOUT | Narrative read-only tools closeout | DONE | Quality gate: ruff/format/mypy/pre-commit pass; full pytest 768 passed in 410.01s; real Narrative inventory dogfood re-verified on `main` at `29f9bdd`. Committed at `cf3ccbfde34de8673ad17e83c987e38a3cbe0e64`. |
 | F4-C-A | Narrative spec-update proposal planning | DONE | Read-only planning completed with Verdict A. Recommended `voyage narrative spec-plan --repo <repo>`: strictly proposal-only, `apply_supported=false`, cross-checks scenario files / SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json. |
-| F4-C-B | Add read-only Narrative spec-plan command | IN PROGRESS | Implement `narrative_spec_plan()` in `narrative_adapter.py`, add `voyage narrative spec-plan --repo` CLI, add unit/integration tests. Cross-checks scenario/library/matrix; emits findings, proposed_actions, affected_files, readiness. No writes, no patches, no runtime/story logic. Quality gates pending. |
+| F4-C-B | Add read-only Narrative spec-plan command | DONE | Commit `cbe9f767e9a762e7038b6d29bf9ea8c486600bf4`. Delivered `narrative_spec_plan()`, `voyage narrative spec-plan --repo`, scenario/library/matrix cross-checks, findings/proposed_actions/affected_files/readiness, `read_only=true`, `apply_supported=false`. Full pytest 808 passed in 260.11s. Real Narrative dogfood passed. |
 | F5-A-A | Second adapter planning | DONE | Read-only planning completed with Verdict A. Recommended generic local Git repo adapter (`local`) for `voyage repo ... --adapter local`. |
 | F5-A-B | Generic local repo adapter | DONE | Added `LocalRepoControlAdapter` (`voyage_framework/core/local_repo_adapter.py`), wired `--adapter local` into generic repo CLI, added unit and integration tests. RepoControlAdapter contract unchanged; existing `--adapter narrative` preserved; Narrative adapter unchanged. Quality gates: ruff/format/mypy/pre-commit pass; full pytest 789 passed in 191.36s; Narrative local-adapter dogfood passed. Implementation committed at `90b050e`; main fast-forward completed at `fd1eccc`. |
 | F5-A-CLOSEOUT | Second adapter proof acceptance | DONE | Closed F5-A; accepted local adapter proof; captured D-010 Role Versioning and Freshness Policy as future architecture principle. Process deviations recorded: implementation commits `90b050e` and `40da9e8` used `--no-verify` after manual pre-commit passed; final ledger commit `fd1eccc` ran hook normally; work first pushed to `origin/auto/nightly-20260627`, then main fast-forwarded after reconciliation. No forbidden files changed; no force/merge/rebase. Next decision: likely return to F4-C read-only spec-update proposal; F6 edit-safety/preview and F7 guarded writes remain future. Committed at `aae2803`. |
@@ -60,6 +60,14 @@
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
+
+## F4-C closeout notes
+- F4-C provides read-only proposal planning for Narrative specs. It does not write Narrative repo files, generate patches, or apply updates. It prepares the input surface for F6 edit-safety/preview.
+- Quality: full pytest 808 passed in 260.11s; F4-C targeted tests 19 passed; Narrative regression 72 passed; local adapter regression 35 passed; boundary regression 8 passed; trust regression 51 passed; pre-commit smoke passed.
+- Real Narrative dogfood: `voyage narrative spec-plan --repo C:\\DEV\\Narrative\\voyage-narrative-engine` -> ok true, readiness warnings, 51 findings, 51 proposed_actions, affected_files include `SCENARIO_LIBRARY.json`, `SCENARIO_MATRIX.json`, and 28 scenario files. Narrative repo was not modified by the Framework task.
+- External Narrative drift observed during F4-C-B: before `main @ 5aa16179b7b3505df34077b6bfd29e6d1949b2f0`; after `feature/v0r2-renpy-engine-specialist-role @ d90c5caf4869ff00ef8792d7d8191a04b6cc90ab`. At F4-C-CLOSEOUT re-verification the local branch name reads `main` but HEAD remains `d90c5caf...`; worktree clean in both observations. No Framework task modifications to Narrative repo.
+- Future architecture decisions captured: D-009 Project Adapter Ownership; D-010 Role Versioning (already captured); D-011 LangGraph reserved optional adapter (F8+).
+- Next decision: recommended F6 edit-safety/preview planning. F6 should consume spec-plan `findings`, `proposed_actions`, `affected_files`, and `readiness`. F7 remains guarded writes/apply. Adapter loader/versioning, Narrative adapter extraction, and LangGraph activation remain future work, not started.
 
 ## Known debts
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
@@ -113,4 +121,5 @@
 | F5-A-B | yes | yes (pre-commit + post-commit + main-ff) | ok:true | `90b050e` | yes |
 | F5-A-CLOSEOUT | yes | yes (pre-commit + post-commit) | ok:true | `aae2803` | yes |
 | F4-C-A | yes | - | - | - | - |
-| F4-C-B | yes | yes (pre-commit) | ok:true | pending | pending |
+| F4-C-B | yes | yes (pre-commit + post-commit) | ok:true | `cbe9f76` | yes |
+| F4-C-CLOSEOUT | yes | pending | pending | pending | pending |

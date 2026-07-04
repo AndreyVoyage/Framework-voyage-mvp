@@ -13,23 +13,23 @@ Autonomy ends at **`auto branch + report`**. It never reaches `main`, `origin/ma
   FOUNDATION
     F0-A  trust-engine design            [done]
     F0-B  validate-report trust engine   [done]
-    F0-D  documentation + ADR            [current]
-    F0-E  negative assert (bad report)   [next]
+    F0-D  documentation + ADR            [done]
+    F0-E  negative assert (bad report)   [done]
   NEAR-TERM
-    F1    hygiene / performance
-    F2    generic RepoControlAdapter (Narrative = first impl)
-    F3    trust hardening (report-state, auto_commit checks, spec-driven paths)
+    F1    hygiene / performance          [done]
+    F2    generic RepoControlAdapter (Narrative = first impl) [done]
+    F3    trust hardening (report-state, auto_commit checks, spec-driven paths) [done]
   MID-TERM
-    F4    Narrative read-only tools (preflight, spec-update)
-    F5    second adapter -> prove multi-repo
-    F6    edit-safety + preview (read-only, pre-write)
+    F4    Narrative read-only tools (preflight, spec-update) [done]
+    F5    second adapter -> prove multi-repo [done]
+    F6    edit-safety + preview (read-only, pre-write) [next]
   LONG-TERM
     F7    first guarded WRITE (authorized, gated)
   HORIZON (far, gated)
     F8+   agent runtime / scheduler / DASHBOARD / replay / metrics
 
 ## Locked next sequence
-`F0-D-B -> F0-D-C (this overview) -> F0-E -> F1 -> F2`. No new development jumps ahead of this.
+`F6 planning -> F6 implementation -> F7 guarded write`. No F6 development starts until the F6 planning phase is approved. LangGraph activation remains F8+ only.
 
 ## Where dashboard sits
 Dashboard is **not a current feature**. It is a **future read-only observability layer** (Horizon / F8+). It shows:

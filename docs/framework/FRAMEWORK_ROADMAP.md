@@ -45,7 +45,21 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 - Role Freshness Auditor: read-only external documentation/changelog review; propose-only role update reports; no automatic role mutation; no direct writes to the role catalog.
 - Timing: versioning/pinning/gate possible F6/F7 candidate; freshness auditor F8+ candidate; no implementation started in this closeout.
 
-## 7. Change log
+## 7. Future horizon — adapter ownership / plugin model
+- Project-specific adapters should move project-side or plugin-side once adapter loading/versioning exists.
+- Framework owns contracts, validation, trust engine (`validate-report`, `report-state`), guardrails, and gated workflows.
+- Projects/plugins own domain-specific checks and spec-plan logic.
+- Built-in Narrative adapter remains a reference / migration bridge until a safe extraction path exists.
+- Adapter versions should be pinnable by consuming projects, aligned with D-010 role versioning.
+- No implementation started in this closeout.
+
+## 8. Future horizon — orchestration, F8+ only
+- LangGraph optional orchestration adapter is reserved for gated control-loop / scheduler work.
+- opt-in extra only; behind adapter boundary; human-gated; never core runtime; never auto-run agents.
+- Reuse existing `langgraph_tools/` only after a future F8+ design gate.
+- No implementation started in this closeout.
+
+## 9. Change log
 | Version | Date | Notes |
 |---|---|---|
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |
