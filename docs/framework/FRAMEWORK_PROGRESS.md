@@ -53,8 +53,8 @@
 | F4-B-CLOSEOUT | Narrative read-only tools closeout | DONE | Quality gate: ruff/format/mypy/pre-commit pass; full pytest 768 passed in 410.01s; real Narrative inventory dogfood re-verified on `main` at `29f9bdd`. Committed at `cf3ccbfde34de8673ad17e83c987e38a3cbe0e64`. |
 | F5-A-A | Second adapter planning | DONE | Read-only planning completed with Verdict A. Recommended generic local Git repo adapter (`local`) for `voyage repo ... --adapter local`. |
 | F5-A-B | Generic local repo adapter | DONE | Added `LocalRepoControlAdapter` (`voyage_framework/core/local_repo_adapter.py`), wired `--adapter local` into generic repo CLI, added unit and integration tests. RepoControlAdapter contract unchanged; existing `--adapter narrative` preserved; Narrative adapter unchanged. Quality gates: ruff/format/mypy/pre-commit pass; full pytest 789 passed in 191.36s; Narrative local-adapter dogfood passed. Implementation committed at `90b050e`; main fast-forward completed at `fd1eccc`. |
-| F5-A-CLOSEOUT | Second adapter proof acceptance | IN PROGRESS | Close F5-A; accept local adapter proof; capture D-010 Role Versioning and Freshness Policy as future architecture principle. Process deviations recorded: implementation commits `90b050e` and `40da9e8` used `--no-verify` after manual pre-commit passed; final ledger commit `fd1eccc` ran hook normally; work first pushed to `origin/auto/nightly-20260627`, then main fast-forwarded after reconciliation. No forbidden files changed; no force/merge/rebase. Next decision: likely return to F4-C read-only spec-update proposal; F6 edit-safety/preview and F7 guarded writes remain future. |
-| F5 | Second adapter (multi-repo) | IN PROGRESS | Generic local Git adapter (`local`) implemented and accepted; closeout commit pending. |
+| F5-A-CLOSEOUT | Second adapter proof acceptance | DONE | Closed F5-A; accepted local adapter proof; captured D-010 Role Versioning and Freshness Policy as future architecture principle. Process deviations recorded: implementation commits `90b050e` and `40da9e8` used `--no-verify` after manual pre-commit passed; final ledger commit `fd1eccc` ran hook normally; work first pushed to `origin/auto/nightly-20260627`, then main fast-forwarded after reconciliation. No forbidden files changed; no force/merge/rebase. Next decision: likely return to F4-C read-only spec-update proposal; F6 edit-safety/preview and F7 guarded writes remain future. Committed at `aae2803`. |
+| F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented, mainline-accepted, and closed at `aae2803`. |
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
@@ -109,4 +109,4 @@
 | F4-B-CLOSEOUT | yes | yes (pre-commit) | ok:true | `cf3ccbf` | yes |
 | F5-A-A | yes | - | - | - | - |
 | F5-A-B | yes | yes (pre-commit + post-commit + main-ff) | ok:true | `90b050e` | yes |
-| F5-A-CLOSEOUT | yes | yes (pre-commit) | ok:true | pending | pending |
+| F5-A-CLOSEOUT | yes | yes (pre-commit + post-commit) | ok:true | `aae2803` | yes |
