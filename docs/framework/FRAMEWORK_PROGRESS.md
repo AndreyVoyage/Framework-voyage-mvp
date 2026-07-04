@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `cf3ccbfde34de8673ad17e83c987e38a3cbe0e64` (F4-B-CLOSEOUT closed).
+- Framework HEAD: `90b050e` (F5-A-B implementation committed; pending push to origin/main at `cf3ccbf`).
 - Narrative HEAD: `29f9bdd3811ab016274efcec20334811dc94e8d0` on branch `main`; worktree clean (observed read-only during F5-A-B verification).
 - Direction: generic dev-control-OS (D-001).
 
@@ -52,8 +52,8 @@
 | F4 | Narrative read-only tools | DONE / CLOSED | F4-A and F4-B closed; F4-B-CLOSEOUT committed at `cf3ccbf`. |
 | F4-B-CLOSEOUT | Narrative read-only tools closeout | DONE | Quality gate: ruff/format/mypy/pre-commit pass; full pytest 768 passed in 410.01s; real Narrative inventory dogfood re-verified on `main` at `29f9bdd`. Committed at `cf3ccbfde34de8673ad17e83c987e38a3cbe0e64`. |
 | F5-A-A | Second adapter planning | DONE | Read-only planning completed with Verdict A. Recommended generic local Git repo adapter (`local`) for `voyage repo ... --adapter local`. |
-| F5-A-B | Generic local repo adapter | IN PROGRESS | Added `LocalRepoControlAdapter` (`voyage_framework/core/local_repo_adapter.py`), wired `--adapter local` into generic repo CLI, added unit and integration tests. Quality gates: ruff/format/mypy/pre-commit pass; full pytest 789 passed in 191.36s; Narrative local-adapter dogfood passed. Awaiting commit/push. |
-| F5 | Second adapter (multi-repo) | IN PROGRESS | Generic local Git adapter (`local`) implemented; commit pending. |
+| F5-A-B | Generic local repo adapter | DONE | Added `LocalRepoControlAdapter` (`voyage_framework/core/local_repo_adapter.py`), wired `--adapter local` into generic repo CLI, added unit and integration tests. Quality gates: ruff/format/mypy/pre-commit pass; full pytest 789 passed in 191.36s; Narrative local-adapter dogfood passed. Committed at `90b050e`. |
+| F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented and committed at `90b050e`; push pending. |
 | F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
@@ -107,4 +107,4 @@
 | F4-B-B | yes | yes (pre-commit + post-commit) | ok:true | `24ccdd2` | yes |
 | F4-B-CLOSEOUT | yes | yes (pre-commit) | ok:true | `cf3ccbf` | yes |
 | F5-A-A | yes | - | - | - | - |
-| F5-A-B | yes | yes (pre-commit) | ok:true | pending | pending |
+| F5-A-B | yes | yes (pre-commit) | ok:true | `90b050e` | pending |
