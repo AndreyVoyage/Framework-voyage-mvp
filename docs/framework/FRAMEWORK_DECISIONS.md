@@ -42,3 +42,26 @@
 - Date: 2026-06-28, Status: Accepted (implemented in F0-B closeout, commit `01b1935`)
 - Decision: `report_validator.ReportClaim.from_file` reads with `encoding="utf-8-sig"`, accepting reports with or without a UTF-8 BOM. Report writers should still prefer UTF-8 without BOM for clean diffs.
 - Rationale: Windows/PowerShell commonly writes a BOM; the trust engine must not be brittle to it. Surfaced by the F0-B dogfood (validate-report initially failed to load a BOM-prefixed report).
+
+## D-010 - Role Versioning and Freshness Policy
+- Date: 2026-07-04, Status: Accepted (future architecture principle; no implementation yet)
+- Decision:
+  - `RoleProfile` versions are immutable; a published version never changes.
+  - Improvements ship as new versions, for example `developer@1.1`, never as in-place edits to `developer@1.0`.
+  - The Framework role catalog is append-only across versions.
+  - Consuming projects pin exact role versions in a project-side role lockfile.
+  - Updating the Framework role catalog does not affect any running project until that project explicitly upgrades its pinned role versions.
+  - Role upgrades require explicit human approval, version diff review, tests/regression checks, `validate-report`, and audit trail.
+  - Automatic role self-modification is forbidden.
+  - Role freshness checks are allowed only as read-only / propose-only audits.
+  - Role Freshness Auditor may propose role updates, but must not apply them.
+  - Role Upgrade Gate applies approved updates through the normal guarded workflow.
+  - Sequence:
+    1. Implement role versioning, project-side role pinning, and role upgrade gate first.
+    2. Add role regression tests.
+    3. Only later add Role Freshness Auditor as read-only/propose-only, likely F8+.
+- Rationale:
+  - Roles are part of the Framework control surface.
+  - In-place role mutation would make project behavior non-reproducible.
+  - Versioning and pinning give dependency-lockfile style safety: reproducibility, explicit upgrades, auditability, and rollback clarity.
+  - Existing trust/guarded-write machinery should become the substrate for safe role evolution.

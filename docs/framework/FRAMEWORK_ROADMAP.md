@@ -37,7 +37,15 @@ F2 ~3, F3 ~3, F4 ~2-3, F5 ~3-4, F6 ~3-4, F7 ~3-4, F8+ ~8-12 (deliberately far).
 ## 5. Order (locked)
 F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 generic adapter. Do not skip; no new development until ADR + roadmap are written into the repo.
 
-## 6. Change log
+## 6. Future horizon — Role lifecycle safety
+- Role versioning and immutable `RoleProfile` catalog.
+- Project-side role lockfile / pinned role versions.
+- Role Upgrade Gate: role version diff, human approval, regression checks, `validate-report`, audit trail.
+- Role regression tests.
+- Role Freshness Auditor: read-only external documentation/changelog review; propose-only role update reports; no automatic role mutation; no direct writes to the role catalog.
+- Timing: versioning/pinning/gate possible F6/F7 candidate; freshness auditor F8+ candidate; no implementation started in this closeout.
+
+## 7. Change log
 | Version | Date | Notes |
 |---|---|---|
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |
