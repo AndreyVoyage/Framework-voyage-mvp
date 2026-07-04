@@ -249,6 +249,11 @@ class TestRepoCLIHelp:
         assert "RepoControlAdapter" in result.stdout
         assert "narrative" in result.stdout.lower()
 
+    def test_repo_help_mentions_local_adapter(self) -> None:
+        result = _run(["repo", "--help"])
+        assert result.returncode == 0
+        assert "local" in result.stdout.lower()
+
     def test_repo_status_help_mentions_adapter_and_spec(self) -> None:
         result = _run(["repo", "status", "--help"])
         assert result.returncode == 0
@@ -396,6 +401,94 @@ class TestRepoAuditCLI:
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert data["ok"] is True
+
+
+class TestRepoLocalAdapterCLI:
+    def test_local_status_returns_ok_true(self, tmp_path: Path) -> None:
+        repo = tmp_path / "local_repo"
+        _init_repo(repo)
+
+        result = _run(["repo", "status", "--adapter", "local", "--spec", str(repo)])
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "repo.status"
+        assert data["ok"] is True
+        assert data["adapter"] == "local"
+
+    def test_local_validate_with_target_returns_ok_true(self, tmp_path: Path) -> None:
+        repo = tmp_path / "local_repo"
+        _init_repo(repo)
+        (repo / "file.txt").write_text("data", encoding="utf-8")
+
+        result = _run(
+            [
+                "repo",
+                "validate",
+                "--adapter",
+                "local",
+                "--spec",
+                str(repo),
+                "--target",
+                "file.txt",
+            ]
+        )
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "repo.validate"
+        assert data["ok"] is True
+        assert data["adapter"] == "local"
+        assert data["target"] == "file.txt"
+
+    def test_local_validate_missing_target_fails_cleanly(self, tmp_path: Path) -> None:
+        repo = tmp_path / "local_repo"
+        _init_repo(repo)
+
+        result = _run(
+            [
+                "repo",
+                "validate",
+                "--adapter",
+                "local",
+                "--spec",
+                str(repo),
+                "--target",
+                "missing.txt",
+            ]
+        )
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["command"] == "repo.validate"
+        assert data["ok"] is False
+        assert len(data["issues"]) > 0
+
+    def test_local_audit_returns_ok_true(self, tmp_path: Path) -> None:
+        repo = tmp_path / "local_repo"
+        _init_repo(repo)
+
+        result = _run(["repo", "audit", "--adapter", "local", "--spec", str(repo)])
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "repo.audit"
+        assert data["ok"] is True
+        assert data["adapter"] == "local"
+        assert data["details"]["tracked_file_count"] >= 1
+
+    def test_local_preview_returns_ok_true(self, tmp_path: Path) -> None:
+        repo = tmp_path / "local_repo"
+        _init_repo(repo)
+
+        result = _run(["repo", "preview", "--adapter", "local", "--spec", str(repo)])
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["command"] == "repo.preview"
+        assert data["ok"] is True
+        assert data["adapter"] == "local"
+        assert data["details"]["read_only"] is True
 
 
 class TestRepoUnknownAdapterCLI:

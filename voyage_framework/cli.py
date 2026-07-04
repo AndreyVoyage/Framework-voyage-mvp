@@ -1034,14 +1034,18 @@ def _dispatch_narrative(args: argparse.Namespace) -> int:
 def _get_repo_control_adapter(name: str) -> RepoControlAdapter | None:
     """Look up a RepoControlAdapter implementation by name.
 
-    Only "narrative" is supported for now; a second adapter is future work
-    (F5). Lazy-imports the concrete implementation, keeping cli.py's top
-    level free of any Narrative-specific dependency.
+    Supports "narrative" and "local". Lazy-imports the concrete
+    implementation, keeping cli.py's top level free of any adapter-specific
+    dependency.
     """
     if name == "narrative":
         from voyage_framework.core.narrative_adapter import NarrativeRepoControlAdapter
 
         return NarrativeRepoControlAdapter()
+    if name == "local":
+        from voyage_framework.core.local_repo_adapter import LocalRepoControlAdapter
+
+        return LocalRepoControlAdapter()
     return None
 
 
@@ -1497,7 +1501,7 @@ def main() -> int:
         help="Generic repo-control adapter commands (status/validate/audit/preview)",
         description=(
             "Generic repo-control commands backed by RepoControlAdapter implementations. "
-            "Currently supported adapter: narrative. Select it with --adapter narrative. "
+            "Currently supported adapters: narrative, local. Select one with --adapter. "
             "No adapter auto-detection yet. See also: `voyage narrative ...` for the "
             "original Narrative-specific compatibility commands."
         ),
@@ -1511,9 +1515,13 @@ def main() -> int:
     repo_status_parser.add_argument(
         "--adapter",
         required=True,
-        help="Adapter name (currently only: narrative)",
+        help="Adapter name (narrative, local)",
     )
-    repo_status_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_status_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the adapter JSON spec (narrative) or local repo root (local)",
+    )
 
     repo_validate_parser = repo_subparsers.add_parser(
         "validate",
@@ -1522,13 +1530,20 @@ def main() -> int:
     repo_validate_parser.add_argument(
         "--adapter",
         required=True,
-        help="Adapter name (currently only: narrative)",
+        help="Adapter name (narrative, local)",
     )
-    repo_validate_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_validate_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the adapter JSON spec (narrative) or local repo root (local)",
+    )
     repo_validate_parser.add_argument(
         "--target",
         default=None,
-        help="Adapter-specific validate target (e.g. a scenario file path for narrative)",
+        help=(
+            "Adapter-specific validate target "
+            "(e.g. a scenario file path for narrative; a repo-relative path for local)"
+        ),
     )
 
     repo_audit_parser = repo_subparsers.add_parser(
@@ -1538,9 +1553,13 @@ def main() -> int:
     repo_audit_parser.add_argument(
         "--adapter",
         required=True,
-        help="Adapter name (currently only: narrative)",
+        help="Adapter name (narrative, local)",
     )
-    repo_audit_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_audit_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the adapter JSON spec (narrative) or local repo root (local)",
+    )
     repo_audit_parser.add_argument(
         "--target",
         default=None,
@@ -1560,9 +1579,13 @@ def main() -> int:
     repo_preview_parser.add_argument(
         "--adapter",
         required=True,
-        help="Adapter name (currently only: narrative)",
+        help="Adapter name (narrative, local)",
     )
-    repo_preview_parser.add_argument("--spec", required=True, help="Path to the adapter JSON spec")
+    repo_preview_parser.add_argument(
+        "--spec",
+        required=True,
+        help="Path to the adapter JSON spec (narrative) or local repo root (local)",
+    )
 
     report_state_parser = subparsers.add_parser(
         "report-state",
