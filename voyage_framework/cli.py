@@ -1018,6 +1018,38 @@ def _narrative_inventory(args: argparse.Namespace) -> int:
     return 0 if result["ok"] else 1
 
 
+def _narrative_spec_plan(args: argparse.Namespace) -> int:
+    """Read-only Narrative spec-update proposal plan (does not modify the repo)."""
+    from voyage_framework.core.narrative_adapter import narrative_spec_plan
+
+    repo: str | None = getattr(args, "repo", None)
+    if not repo:
+        print(
+            json.dumps(
+                {
+                    "command": "narrative.spec_plan",
+                    "ok": False,
+                    "error": "--repo is required",
+                },
+                indent=2,
+            )
+        )
+        return 1
+
+    try:
+        result = narrative_spec_plan(Path(repo))
+    except AutoLoopError as exc:
+        print(
+            json.dumps(
+                {"command": "narrative.spec_plan", "ok": False, "error": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(json.dumps(result, indent=2))
+    return 0 if result["ok"] else 1
+
+
 def _dispatch_narrative(args: argparse.Namespace) -> int:
     """Dispatcher for Narrative source-only validation commands."""
     command = getattr(args, "narrative_command", None)
@@ -1027,7 +1059,11 @@ def _dispatch_narrative(args: argparse.Namespace) -> int:
         return _narrative_arc_check(args)
     if command == "inventory":
         return _narrative_inventory(args)
-    print("❌ No narrative subcommand provided. Use: scene-validate, arc-check, inventory")
+    if command == "spec-plan":
+        return _narrative_spec_plan(args)
+    print(
+        "❌ No narrative subcommand provided. Use: scene-validate, arc-check, inventory, spec-plan"
+    )
     return 1
 
 
@@ -1455,6 +1491,25 @@ def main() -> int:
             "Path to the Narrative repo root (or scenarios directory, or "
             "SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json). Reads scenario files "
             "and catalog files without modifying the repo."
+        ),
+    )
+
+    narrative_spec_plan_parser = narrative_subparsers.add_parser(
+        "spec-plan",
+        help="Read-only Narrative spec-update proposal plan",
+        description=(
+            "Read-only proposal plan for a Narrative repo. Cross-checks scenario files, "
+            "SCENARIO_LIBRARY.json, and SCENARIO_MATRIX.json and reports findings with "
+            "proposal-only actions. No files are modified; applying changes is not supported."
+        ),
+    )
+    narrative_spec_plan_parser.add_argument(
+        "--repo",
+        required=True,
+        help=(
+            "Path to the Narrative repo root (or scenarios directory, or "
+            "SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json). Reads catalog files without "
+            "modifying the repo."
         ),
     )
 

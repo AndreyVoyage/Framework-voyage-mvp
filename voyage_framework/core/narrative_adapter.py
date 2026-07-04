@@ -426,6 +426,598 @@ def narrative_inventory(source_path: str | Path) -> dict[str, Any]:
     }
 
 
+# ── Spec-update proposal ──────────────────────────────────────────────────────
+
+
+def _extract_id(raw: object, filename: str) -> str:
+    """Return a scenario id from parsed JSON or the filename stem."""
+    if isinstance(raw, dict):
+        for key in ("scenario_id", "id"):
+            value = raw.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        metadata = raw.get("metadata")
+        if isinstance(metadata, dict):
+            for key in ("scenario_id", "id"):
+                value = metadata.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+    return Path(filename).stem
+
+
+def _extract_version(raw: object) -> str:
+    """Return a schema version string from parsed JSON."""
+    if isinstance(raw, dict):
+        for key in ("schema_version", "version"):
+            value = raw.get(key)
+            if isinstance(value, (str, int, float)):
+                return str(value).strip() or "unknown"
+        metadata = raw.get("metadata")
+        if isinstance(metadata, dict):
+            for key in ("schema_version", "version"):
+                value = metadata.get(key)
+                if isinstance(value, (str, int, float)):
+                    return str(value).strip() or "unknown"
+    return "unknown"
+
+
+def _extract_entries(catalog: object) -> list[dict[str, Any]]:
+    """Tolerantly extract a list of entry dicts from a catalog object."""
+    if isinstance(catalog, list):
+        return [item for item in catalog if isinstance(item, dict)]
+    if isinstance(catalog, dict):
+        for key in ("scenarios", "entries", "items", "library"):
+            value = catalog.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return [item for item in catalog.values() if isinstance(item, dict)]
+    return []
+
+
+def _entry_id(entry: dict[str, Any]) -> str | None:
+    for key in ("scenario_id", "id", "scenarioId"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _entry_file(entry: dict[str, Any]) -> str | None:
+    for key in ("file", "filename", "path"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _extract_rows(matrix: object) -> list[dict[str, Any]]:
+    """Tolerantly extract a list of row dicts from a matrix object."""
+    if isinstance(matrix, list):
+        return [item for item in matrix if isinstance(item, dict)]
+    if isinstance(matrix, dict):
+        for key in ("rows", "matrix", "entries", "items", "scenarios"):
+            value = matrix.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return [item for item in matrix.values() if isinstance(item, dict)]
+    return []
+
+
+def _row_id(row: dict[str, Any]) -> str | None:
+    for key in (
+        "scenario_id",
+        "id",
+        "source",
+        "target",
+        "from",
+        "to",
+        "scenario",
+    ):
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _row_file(row: dict[str, Any]) -> str | None:
+    for key in ("file", "filename", "path"):
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _library_count_field(catalog: dict[str, Any]) -> int | None:
+    for key in ("total_scenarios", "count", "total", "length"):
+        value = catalog.get(key)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                pass
+    return None
+
+
+def narrative_spec_plan(repo_path: str | Path) -> dict[str, Any]:
+    """Read-only spec-update proposal plan for a Narrative target repo.
+
+    Discovers scenario files, reads ``SCENARIO_LIBRARY.json`` and
+    ``SCENARIO_MATRIX.json``, and reports inconsistencies as findings with
+    proposal-only actions. Never writes, stages, commits, or pushes. Does not
+    run RenPy or any product runtime.
+    """
+    path = Path(repo_path).resolve()
+    source_type, repo_root, scenarios_dir, _spec_path = _resolve_inventory_source(path)
+
+    repo_root_str = str(repo_root)
+    library_path = scenarios_dir / "SCENARIO_LIBRARY.json"
+    matrix_path = scenarios_dir / "SCENARIO_MATRIX.json"
+    library_rel = _relative_to_repo(library_path, repo_root)
+    matrix_rel = _relative_to_repo(matrix_path, repo_root)
+
+    findings: list[dict[str, Any]] = []
+    proposed_actions: list[dict[str, Any]] = []
+    affected_files: list[str] = []
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    scenario_files: list[str] = []
+    scenario_ids: dict[str, str] = {}
+    schema_versions: dict[str, int] = {}
+    parse_failures: list[str] = []
+
+    if scenarios_dir.is_dir():
+        for scenario_path in sorted(scenarios_dir.glob("SCENARIO_*.json")):
+            name = scenario_path.name
+            if name in ("SCENARIO_LIBRARY.json", "SCENARIO_MATRIX.json"):
+                continue
+            rel = _relative_to_repo(scenario_path, repo_root)
+            scenario_files.append(rel)
+            try:
+                raw = json.loads(scenario_path.read_text(encoding="utf-8"))
+            except OSError as exc:
+                parse_failures.append(f"{rel}: cannot read scenario: {exc}")
+                schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
+                continue
+            except json.JSONDecodeError as exc:
+                parse_failures.append(f"{rel}: JSON parse error: {exc}")
+                schema_versions["unknown"] = schema_versions.get("unknown", 0) + 1
+                continue
+
+            scenario_id = _extract_id(raw, name)
+            if scenario_id in scenario_ids:
+                findings.append(
+                    {
+                        "severity": "warning",
+                        "code": "duplicate_scenario_id",
+                        "message": (
+                            f"scenario id {scenario_id!r} appears in multiple files: "
+                            f"{scenario_ids[scenario_id]} and {rel}"
+                        ),
+                        "file": rel,
+                        "related": sorted({scenario_ids[scenario_id], rel}),
+                    }
+                )
+                proposed_actions.append(
+                    {
+                        "action_type": "review_duplicate_scenario_id",
+                        "status": "proposal_only",
+                        "target_file": rel,
+                        "reason": (
+                            f"scenario id {scenario_id!r} is duplicated; "
+                            "review and rename or merge files"
+                        ),
+                        "safe_to_apply_automatically": False,
+                    }
+                )
+            else:
+                scenario_ids[scenario_id] = rel
+
+            version = _extract_version(raw)
+            schema_versions[version] = schema_versions.get(version, 0) + 1
+
+    if parse_failures:
+        warnings.extend(parse_failures)
+        for failure in parse_failures:
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "scenario_json_parse_error",
+                    "message": failure,
+                    "file": None,
+                    "related": [],
+                }
+            )
+
+    if len(schema_versions) > 1:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "schema_version_mixed",
+                "message": (
+                    "scenario files use multiple schema versions: "
+                    f"{dict(sorted(schema_versions.items()))}"
+                ),
+                "file": None,
+                "related": sorted(scenario_files),
+            }
+        )
+        proposed_actions.append(
+            {
+                "action_type": "review_schema_version_mix",
+                "status": "proposal_only",
+                "target_file": None,
+                "reason": (
+                    "schema versions are mixed; review whether to normalize to a single version"
+                ),
+                "safe_to_apply_automatically": False,
+            }
+        )
+
+    # Library analysis
+    library_present = library_path.is_file()
+    library_entries: list[dict[str, Any]] = []
+    library_entry_ids: set[str] = set()
+    library_entry_files: set[str] = set()
+    library_raw: object = None
+
+    if not library_present:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "library_missing",
+                "message": f"SCENARIO_LIBRARY.json not found at {library_rel}",
+                "file": library_rel,
+                "related": [],
+            }
+        )
+        proposed_actions.append(
+            {
+                "action_type": "review_library_missing",
+                "status": "proposal_only",
+                "target_file": library_rel,
+                "reason": "library is missing; consider creating it from scenario files",
+                "safe_to_apply_automatically": False,
+            }
+        )
+        affected_files.append(library_rel)
+    else:
+        try:
+            library_raw = json.loads(library_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            warnings.append(f"cannot read library: {exc}")
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "library_json_parse_error",
+                    "message": f"cannot read {library_rel}: {exc}",
+                    "file": library_rel,
+                    "related": [],
+                }
+            )
+        except json.JSONDecodeError as exc:
+            warnings.append(f"library JSON parse error: {exc}")
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "library_json_parse_error",
+                    "message": f"{library_rel}: JSON parse error: {exc}",
+                    "file": library_rel,
+                    "related": [],
+                }
+            )
+        else:
+            if isinstance(library_raw, dict):
+                declared_count = _library_count_field(library_raw)
+                if declared_count is not None and declared_count != len(
+                    _extract_entries(library_raw)
+                ):
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "library_count_drift",
+                            "message": (
+                                f"library declares {declared_count} scenarios but "
+                                f"contains {len(_extract_entries(library_raw))} entries"
+                            ),
+                            "file": library_rel,
+                            "related": [],
+                        }
+                    )
+                    proposed_actions.append(
+                        {
+                            "action_type": "review_library_count",
+                            "status": "proposal_only",
+                            "target_file": library_rel,
+                            "reason": "library total_scenarios/count does not match entry count",
+                            "safe_to_apply_automatically": False,
+                        }
+                    )
+                    affected_files.append(library_rel)
+
+            library_entries = _extract_entries(library_raw)
+            if not library_entries and library_raw is not None:
+                findings.append(
+                    {
+                        "severity": "warning",
+                        "code": "library_unrecognized_shape",
+                        "message": (
+                            f"{library_rel} has a recognized shape but no extractable entries"
+                        ),
+                        "file": library_rel,
+                        "related": [],
+                    }
+                )
+                proposed_actions.append(
+                    {
+                        "action_type": "review_library_shape",
+                        "status": "proposal_only",
+                        "target_file": library_rel,
+                        "reason": "library structure could not be parsed; review schema",
+                        "safe_to_apply_automatically": False,
+                    }
+                )
+                affected_files.append(library_rel)
+
+            for entry in library_entries:
+                entry_id = _entry_id(entry)
+                entry_file = _entry_file(entry)
+                if entry_id:
+                    library_entry_ids.add(entry_id)
+                if entry_file:
+                    library_entry_files.add(entry_file)
+
+                referenced_ids = {i for i in (entry_id,) if i}
+                if entry_file:
+                    file_stem = Path(entry_file).stem
+                    referenced_ids.add(file_stem)
+
+                missing_refs = sorted(
+                    ref
+                    for ref in referenced_ids
+                    if ref not in scenario_ids
+                    and ref not in {Path(f).stem for f in scenario_files}
+                    and ref not in scenario_files
+                )
+                if missing_refs:
+                    msg_parts: list[str] = []
+                    if entry_id:
+                        msg_parts.append(f"id={entry_id!r}")
+                    if entry_file:
+                        msg_parts.append(f"file={entry_file!r}")
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "library_entry_missing_scenario",
+                            "message": (
+                                "library entry references missing scenario(s): "
+                                f"{', '.join(missing_refs)} "
+                                f"({', '.join(msg_parts)})"
+                            ),
+                            "file": library_rel,
+                            "related": sorted(missing_refs),
+                        }
+                    )
+                    proposed_actions.append(
+                        {
+                            "action_type": "review_remove_stale_library_entry",
+                            "status": "proposal_only",
+                            "target_file": library_rel,
+                            "reason": (
+                                "library entry points to scenario(s) that do not exist; "
+                                "review for removal or correction"
+                            ),
+                            "safe_to_apply_automatically": False,
+                        }
+                    )
+                    affected_files.append(library_rel)
+
+            for scenario_id, rel in sorted(scenario_ids.items()):
+                if scenario_id not in library_entry_ids and rel not in library_entry_files:
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "scenario_missing_library_entry",
+                            "message": (
+                                f"scenario {scenario_id!r} ({rel}) is not referenced by the library"
+                            ),
+                            "file": rel,
+                            "related": [library_rel],
+                        }
+                    )
+                    proposed_actions.append(
+                        {
+                            "action_type": "review_add_library_entry",
+                            "status": "proposal_only",
+                            "target_file": library_rel,
+                            "reason": f"scenario {scenario_id!r} exists but has no library entry",
+                            "safe_to_apply_automatically": False,
+                        }
+                    )
+                    affected_files.extend([rel, library_rel])
+
+    # Matrix analysis
+    matrix_present = matrix_path.is_file()
+    matrix_row_ids: set[str] = set()
+    matrix_row_files: set[str] = set()
+
+    if not matrix_present:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "matrix_missing",
+                "message": f"SCENARIO_MATRIX.json not found at {matrix_rel}",
+                "file": matrix_rel,
+                "related": [],
+            }
+        )
+        proposed_actions.append(
+            {
+                "action_type": "review_matrix_missing",
+                "status": "proposal_only",
+                "target_file": matrix_rel,
+                "reason": "matrix is missing; consider creating it from scenario files",
+                "safe_to_apply_automatically": False,
+            }
+        )
+        affected_files.append(matrix_rel)
+    else:
+        try:
+            matrix_raw = json.loads(matrix_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            warnings.append(f"cannot read matrix: {exc}")
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "matrix_json_parse_error",
+                    "message": f"cannot read {matrix_rel}: {exc}",
+                    "file": matrix_rel,
+                    "related": [],
+                }
+            )
+        except json.JSONDecodeError as exc:
+            warnings.append(f"matrix JSON parse error: {exc}")
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "matrix_json_parse_error",
+                    "message": f"{matrix_rel}: JSON parse error: {exc}",
+                    "file": matrix_rel,
+                    "related": [],
+                }
+            )
+        else:
+            matrix_rows = _extract_rows(matrix_raw)
+            if not matrix_rows and matrix_raw is not None:
+                findings.append(
+                    {
+                        "severity": "warning",
+                        "code": "matrix_unrecognized_shape",
+                        "message": (f"{matrix_rel} has a recognized shape but no extractable rows"),
+                        "file": matrix_rel,
+                        "related": [],
+                    }
+                )
+                proposed_actions.append(
+                    {
+                        "action_type": "review_matrix_shape",
+                        "status": "proposal_only",
+                        "target_file": matrix_rel,
+                        "reason": "matrix structure could not be parsed; review schema",
+                        "safe_to_apply_automatically": False,
+                    }
+                )
+                affected_files.append(matrix_rel)
+
+            for row in matrix_rows:
+                row_id = _row_id(row)
+                row_file = _row_file(row)
+                if row_id:
+                    matrix_row_ids.add(row_id)
+                if row_file:
+                    matrix_row_files.add(row_file)
+
+                referenced_ids = {i for i in (row_id,) if i}
+                if row_file:
+                    referenced_ids.add(Path(row_file).stem)
+
+                unknown = sorted(
+                    ref
+                    for ref in referenced_ids
+                    if ref not in scenario_ids
+                    and ref not in {Path(f).stem for f in scenario_files}
+                    and ref not in scenario_files
+                )
+                if unknown:
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "matrix_reference_unknown_scenario",
+                            "message": (
+                                f"matrix row references unknown scenario(s): {', '.join(unknown)}"
+                            ),
+                            "file": matrix_rel,
+                            "related": sorted(unknown),
+                        }
+                    )
+                    proposed_actions.append(
+                        {
+                            "action_type": "review_matrix_reference",
+                            "status": "proposal_only",
+                            "target_file": matrix_rel,
+                            "reason": (
+                                "matrix references scenario(s) that do not exist; "
+                                "review for removal or correction"
+                            ),
+                            "safe_to_apply_automatically": False,
+                        }
+                    )
+                    affected_files.append(matrix_rel)
+
+            for scenario_id, rel in sorted(scenario_ids.items()):
+                if scenario_id not in matrix_row_ids and rel not in matrix_row_files:
+                    findings.append(
+                        {
+                            "severity": "info",
+                            "code": "scenario_missing_matrix_reference",
+                            "message": (
+                                f"scenario {scenario_id!r} ({rel}) is not referenced by the matrix"
+                            ),
+                            "file": rel,
+                            "related": [matrix_rel],
+                        }
+                    )
+                    proposed_actions.append(
+                        {
+                            "action_type": "review_matrix_coverage",
+                            "status": "proposal_only",
+                            "target_file": matrix_rel,
+                            "reason": f"scenario {scenario_id!r} exists but has no matrix row",
+                            "safe_to_apply_automatically": False,
+                        }
+                    )
+                    affected_files.extend([rel, matrix_rel])
+
+    # Determine readiness
+    error_findings = [f for f in findings if f.get("severity") == "error"]
+    warning_findings = [f for f in findings if f.get("severity") in ("warning", "info")]
+
+    if errors or error_findings:
+        readiness = "blocked"
+        ok = False
+    elif warning_findings:
+        readiness = "warnings"
+        ok = True
+    else:
+        readiness = "ready"
+        ok = True
+
+    return {
+        "command": "narrative.spec_plan",
+        "ok": ok,
+        "repo_root": repo_root_str,
+        "read_only": True,
+        "apply_supported": False,
+        "inventory": {
+            "scenario_count": len(scenario_files),
+            "library_present": library_present,
+            "matrix_present": matrix_present,
+            "schema_versions": dict(sorted(schema_versions.items())),
+        },
+        "findings": sorted(findings, key=lambda f: (f["severity"], f["code"], f["message"])),
+        "proposed_actions": sorted(
+            proposed_actions,
+            key=lambda a: (a["action_type"], a.get("target_file") or "", a["reason"]),
+        ),
+        "affected_files": sorted(set(affected_files)),
+        "warnings": sorted(warnings),
+        "errors": sorted(errors),
+        "readiness": readiness,
+    }
+
+
 # ── Arc checkpoint ────────────────────────────────────────────────────────────
 
 
