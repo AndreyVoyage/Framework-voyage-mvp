@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `cbe9f767e9a762e7038b6d29bf9ea8c486600bf4` (F4-C read-only spec-plan closed; D-009/D-010/D-011 captured).
+- Framework HEAD / origin/main: `46728036983771ad198beb2f727e9244151bff22` (F4-C read-only spec-plan closed; D-009/D-010/D-011 captured).
 - Narrative HEAD: `d90c5caf4869ff00ef8792d7d8191a04b6cc90ab` on branch `main`; worktree clean (observed read-only during F4-C-CLOSEOUT verification; branch/HEAD drifted externally after F4-C-B baseline).
 - Direction: generic dev-control-OS (D-001).
 
@@ -49,7 +49,7 @@
 | F4-B-A | Narrative spec/source discovery planning | DONE | Read-only planning completed with Verdict A. Real Narrative repo has scenario/library/matrix files but no autoloop spec; recommended repo-root/source-mode inventory support. |
 | F4-B-B | Extend inventory with repo-root/source mode | DONE | Added repo-root/source-mode inventory support: `narrative_inventory()` now accepts autoloop spec, repo root, scenarios directory, SCENARIO_LIBRARY.json, or SCENARIO_MATRIX.json. Added `voyage narrative inventory --repo <repo>` while preserving `--spec`. RepoControlAdapter contract unchanged; generic `voyage repo ...` unchanged; old narrative commands preserved; Narrative repo not modified. Real Narrative dogfood passed: `voyage narrative inventory --repo C:\\DEV\\Narrative\\voyage-narrative-engine` -> ok true, readiness ready, source_type repo_root, scenario_count 29, library/matrix present. F4-B-B run reported a transient Narrative branch name difference (`feature/n5f-hybrid-json-path-design` vs `main`) with unchanged HEAD/worktree; this closeout re-verified branch `main`, HEAD `4f13f3b`, worktree clean. Committed and pushed as `24ccdd2f4074a359b52ad15d8952560c60ae4e3f`. Full pytest 768 passed in 410.01s (measured during F4-B-CLOSEOUT). |
 | F4-B | Repo-root/source-mode inventory slice | DONE / CLOSED | F4-B-A (planning) and F4-B-B (implementation) both closed. Final closeout quality gate (F4-B-CLOSEOUT): ruff pass, format pass, mypy pass, targeted F4 regressions pass, trust regressions pass, real Narrative inventory dogfood pass, pre-commit smoke pass, full pytest 768 passed in 410.01s. |
-| F4 | Narrative read-only tools | DONE / CLOSED | F4-A, F4-B, and F4-C closed; F4-C-CLOSEOUT pending commit. |
+| F4 | Narrative read-only tools | DONE / CLOSED | F4-A, F4-B, and F4-C closed; F4-C-CLOSEOUT committed at `4672803`. |
 | F4-B-CLOSEOUT | Narrative read-only tools closeout | DONE | Quality gate: ruff/format/mypy/pre-commit pass; full pytest 768 passed in 410.01s; real Narrative inventory dogfood re-verified on `main` at `29f9bdd`. Committed at `cf3ccbfde34de8673ad17e83c987e38a3cbe0e64`. |
 | F4-C-A | Narrative spec-update proposal planning | DONE | Read-only planning completed with Verdict A. Recommended `voyage narrative spec-plan --repo <repo>`: strictly proposal-only, `apply_supported=false`, cross-checks scenario files / SCENARIO_LIBRARY.json / SCENARIO_MATRIX.json. |
 | F4-C-B | Add read-only Narrative spec-plan command | DONE | Commit `cbe9f767e9a762e7038b6d29bf9ea8c486600bf4`. Delivered `narrative_spec_plan()`, `voyage narrative spec-plan --repo`, scenario/library/matrix cross-checks, findings/proposed_actions/affected_files/readiness, `read_only=true`, `apply_supported=false`. Full pytest 808 passed in 260.11s. Real Narrative dogfood passed. |
@@ -122,4 +122,4 @@
 | F5-A-CLOSEOUT | yes | yes (pre-commit + post-commit) | ok:true | `aae2803` | yes |
 | F4-C-A | yes | - | - | - | - |
 | F4-C-B | yes | yes (pre-commit + post-commit) | ok:true | `cbe9f76` | yes |
-| F4-C-CLOSEOUT | yes | pending | pending | pending | pending |
+| F4-C-CLOSEOUT | yes | yes (pre-commit) | ok:true | `4672803` | yes |
