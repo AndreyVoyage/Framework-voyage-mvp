@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `46728036983771ad198beb2f727e9244151bff22` (F4-C read-only spec-plan closed; D-009/D-010/D-011 captured).
-- Narrative HEAD: `d90c5caf4869ff00ef8792d7d8191a04b6cc90ab` on branch `main`; worktree clean (observed read-only during F4-C-CLOSEOUT verification; branch/HEAD drifted externally after F4-C-B baseline).
+- Framework HEAD / origin/main: `0c8fd9dc50c8164ecdf5da2e3ede99e9e3ef8bb6` (F4-C closed; F6 edit-preview implementation in progress).
+- Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `main`; worktree clean (observed read-only during F6-B verification; branch/HEAD continued external drift).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -57,7 +57,9 @@
 | F5-A-B | Generic local repo adapter | DONE | Added `LocalRepoControlAdapter` (`voyage_framework/core/local_repo_adapter.py`), wired `--adapter local` into generic repo CLI, added unit and integration tests. RepoControlAdapter contract unchanged; existing `--adapter narrative` preserved; Narrative adapter unchanged. Quality gates: ruff/format/mypy/pre-commit pass; full pytest 789 passed in 191.36s; Narrative local-adapter dogfood passed. Implementation committed at `90b050e`; main fast-forward completed at `fd1eccc`. |
 | F5-A-CLOSEOUT | Second adapter proof acceptance | DONE | Closed F5-A; accepted local adapter proof; captured D-010 Role Versioning and Freshness Policy as future architecture principle. Process deviations recorded: implementation commits `90b050e` and `40da9e8` used `--no-verify` after manual pre-commit passed; final ledger commit `fd1eccc` ran hook normally; work first pushed to `origin/auto/nightly-20260627`, then main fast-forwarded after reconciliation. No forbidden files changed; no force/merge/rebase. Next decision: likely return to F4-C read-only spec-update proposal; F6 edit-safety/preview and F7 guarded writes remain future. Committed at `aae2803`. |
 | F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented, mainline-accepted, and closed at `aae2803`. |
-| F6 | Edit-safety & preview | PLANNED | edit-check, preview/render-check. |
+| F6-A | Edit-safety / preview planning | DONE | Read-only planning completed with Verdict A. Recommended generic `voyage edit-preview --plan <json> --repo <repo> --repo-role <role>`. |
+| F6-B | Add read-only edit-preview command | IN PROGRESS | Implement `edit_preview()` in `voyage_framework/core/edit_preview.py`, wire `voyage edit-preview` CLI, add unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply. Quality gates pending. |
+| F6 | Edit-safety & preview | IN PROGRESS | F6-A DONE; F6-B implementation selected; pending commit. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
@@ -68,6 +70,12 @@
 - External Narrative drift observed during F4-C-B: before `main @ 5aa16179b7b3505df34077b6bfd29e6d1949b2f0`; after `feature/v0r2-renpy-engine-specialist-role @ d90c5caf4869ff00ef8792d7d8191a04b6cc90ab`. At F4-C-CLOSEOUT re-verification the local branch name reads `main` but HEAD remains `d90c5caf...`; worktree clean in both observations. No Framework task modifications to Narrative repo.
 - Future architecture decisions captured: D-009 Project Adapter Ownership; D-010 Role Versioning (already captured); D-011 LangGraph reserved optional adapter (F8+).
 - Next decision: recommended F6 edit-safety/preview planning. F6 should consume spec-plan `findings`, `proposed_actions`, `affected_files`, and `readiness`. F7 remains guarded writes/apply. Adapter loader/versioning, Narrative adapter extraction, and LangGraph activation remain future work, not started.
+
+## F6 edit-preview notes
+- F6-B adds a generic read-only edit-preview / change-plan validator. It consumes proposal JSON (e.g. `narrative spec-plan` output) and validates it against repo state and the role-based forbidden-path policy. It emits `allowed_files`, `blocked_files`, `safety_findings`, `readiness`, and `next_gate: F7_guarded_write_required`.
+- Semantic correction: if a plan contains forbidden paths, path traversal, `apply_supported:true`, or non-proposal actions, `edit-preview` emits valid JSON with `ok:false`, `readiness:blocked`, and exits 1. This is a successful safety block, not a tool failure.
+- No writes, no patch generation, no apply, no RepoControlAdapter contract change, no adapter loader/versioning, no LangGraph activation, no Role Versioning code.
+- Real Narrative dogfood may be blocked because `repo_role=narrative` policy forbids `scenarios/SCENARIO_LIBRARY.json` and `scenarios/SCENARIO_MATRIX.json`; this is expected and demonstrates correct gate behavior.
 
 ## Known debts
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
@@ -123,3 +131,5 @@
 | F4-C-A | yes | - | - | - | - |
 | F4-C-B | yes | yes (pre-commit + post-commit) | ok:true | `cbe9f76` | yes |
 | F4-C-CLOSEOUT | yes | yes (pre-commit) | ok:true | `4672803` | yes |
+| F6-A | yes | - | - | - | - |
+| F6-B | yes | pending | pending | pending | pending |

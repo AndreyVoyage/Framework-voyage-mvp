@@ -1229,6 +1229,23 @@ def _validate_report_command(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _edit_preview_command(args: argparse.Namespace) -> int:
+    """Validate a proposed change plan against a repo and emit a safety preview.
+
+    This command is read-only. It does not write, patch, apply, stage, or commit.
+    It is intended as the F6 edit-safety gate before F7 guarded writes.
+    """
+    from voyage_framework.core.edit_preview import edit_preview
+
+    result = edit_preview(
+        plan_path=args.plan,
+        repo_path=args.repo,
+        repo_role=args.repo_role,
+    )
+    print(json.dumps(result, indent=2))
+    return 0 if result["ok"] else 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1665,6 +1682,34 @@ def main() -> int:
     )
     validate_report_parser.add_argument("--report", required=True, help="Path to JSON report")
 
+    edit_preview_parser = subparsers.add_parser(
+        "edit-preview",
+        help="Validate a change plan against a repo and emit a read-only safety preview",
+        description=(
+            "Read-only edit-safety gate. Validates a proposal JSON plan against "
+            "the target repository state and forbidden-path policy. Emits a JSON "
+            "preview with allowed_files, blocked_files, safety_findings, and "
+            "readiness. No writes, no patches, no apply."
+        ),
+    )
+    edit_preview_parser.add_argument(
+        "--plan",
+        required=True,
+        help="Path to the proposal JSON plan file",
+    )
+    edit_preview_parser.add_argument(
+        "--repo",
+        required=True,
+        help="Path to the target repository root",
+    )
+    edit_preview_parser.add_argument(
+        "--repo-role",
+        default="generic",
+        help=(
+            "Repo role for forbidden-path policy (generic, framework, narrative); default: generic"
+        ),
+    )
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1827,6 +1872,7 @@ def main() -> int:
         "repo": _dispatch_repo,
         "report-state": _report_state_command,
         "validate-report": _validate_report_command,
+        "edit-preview": _edit_preview_command,
     }
 
     command_name: str = args.command
