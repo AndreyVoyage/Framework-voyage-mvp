@@ -1251,7 +1251,9 @@ def _dispatch_guarded_write(args: argparse.Namespace) -> int:
     command = getattr(args, "guarded_write_command", None)
     if command == "plan":
         return _guarded_write_plan_command(args)
-    print("❌ No guarded-write subcommand provided. Use: plan")
+    if command == "verify-approval":
+        return _guarded_write_approval_verify_command(args)
+    print("❌ No guarded-write subcommand provided. Use: plan, verify-approval")
     return 1
 
 
@@ -1266,6 +1268,26 @@ def _guarded_write_plan_command(args: argparse.Namespace) -> int:
 
     result = guarded_write_plan(
         preview_path=args.preview,
+        repo_path=args.repo,
+    )
+    print(json.dumps(result, indent=2))
+    return 0 if result["ok"] else 1
+
+
+def _guarded_write_approval_verify_command(args: argparse.Namespace) -> int:
+    """Verify an external approval artifact against an edit-preview and repo state.
+
+    This command is read-only. It does not write files, generate patches,
+    apply changes, stage files, or commit. It only validates that a human
+    approval artifact is bound to the preview and current repository state.
+    """
+    from voyage_framework.core.guarded_write_approval import (
+        guarded_write_approval_verify,
+    )
+
+    result = guarded_write_approval_verify(
+        preview_path=args.preview,
+        approval_path=args.approval,
         repo_path=args.repo,
     )
     print(json.dumps(result, indent=2))
@@ -1763,6 +1785,33 @@ def main() -> int:
         help="Path to the edit-preview JSON output file",
     )
     guarded_write_plan_parser.add_argument(
+        "--repo",
+        required=True,
+        help="Path to the target repository root",
+    )
+
+    guarded_write_verify_approval_parser = guarded_write_subparsers.add_parser(
+        "verify-approval",
+        help="Verify an external approval artifact against an edit-preview and repo state",
+        description=(
+            "Read-only approval artifact verification. Consumes an edit-preview "
+            "JSON output and an external human approval artifact JSON, then "
+            "verifies that the approval is valid and bound to the preview and "
+            "current repository state. No writes, no patch generation, no apply, "
+            "no staging, no commit."
+        ),
+    )
+    guarded_write_verify_approval_parser.add_argument(
+        "--preview",
+        required=True,
+        help="Path to the edit-preview JSON output file",
+    )
+    guarded_write_verify_approval_parser.add_argument(
+        "--approval",
+        required=True,
+        help="Path to the external approval artifact JSON file",
+    )
+    guarded_write_verify_approval_parser.add_argument(
         "--repo",
         required=True,
         help="Path to the target repository root",
