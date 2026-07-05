@@ -72,7 +72,15 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 - D-013 modernization remains future and should reuse D-012 rather than bypass it.
 - No implementation started in this closeout.
 
-## 10. Change log
+## 10. F7 guarded write status
+- **F7-B guarded-write approval/preflight layer completed** (commit `944f3cec2c53a44c95200a27eb867bbda1098759`).
+- It consumes F6 `edit-preview` output and produces a human-approval-required plan.
+- It is read-only: no file writes, no patch generation, no apply, no staging, no commit to target repo.
+- `approval_required=true`, `writes_supported=false`, `next_gate=human_approval_required`.
+- **F7-C remains future:** structured writes behind explicit human approval, checkpoint/rollback, drift checks, and post-write validation.
+- **F8+ remains future:** orchestration, LangGraph optional adapter, role freshness auditor, adapter loader/versioning, D-013 modernization.
+
+## 11. Change log
 | Version | Date | Notes |
 |---|---|---|
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |

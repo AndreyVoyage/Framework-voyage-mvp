@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-05)
-- Framework HEAD / origin/main: `74d9206076bd4104ff0951ed56c786b24a6b5647` (F6 closeout baseline; F7-B implementation pending commit).
-- Narrative HEAD: `0e1f989b9c65628920aecc2ee3ec0e797fae5917` on branch `feature/n5j-generated-rpy-freshness-validator`; worktree clean (external drift observed during F7-B baseline).
+- Framework HEAD / origin/main: `944f3cec2c53a44c95200a27eb867bbda1098759` (F7-B guarded-write approval plan committed/pushed; F7-B-CLOSEOUT docs pending commit).
+- Narrative HEAD: `10eaed300cf8f932086ce3013b4a399228d0d418` on branch `main`; worktree clean (external drift observed during F7-B closeout baseline).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -61,8 +61,8 @@
 | F6-B | Add read-only edit-preview command | DONE | Commit `70a1a266c6f607fa5dcf4ca1c89c03809e03a222`. Delivered `edit_preview()`, `voyage edit-preview --plan --repo --repo-role`, unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply; RepoControlAdapter contract unchanged. Full pytest 831 passed in 167.72s. Real Narrative dogfood produced expected safety block. |
 | F6 | Edit-safety & preview | DONE / CLOSED | F6-A, F6-B, and F6-CLOSEOUT committed at `1d42f0f`. |
 | F7-A | Guarded write planning | DONE | Recommended Option A: approval/preflight layer first; no writes; actual structured writes deferred to F7-C. |
-| F7-B | Guarded write approval plan | IN PROGRESS / pending commit | Generic `voyage guarded-write plan --preview --repo`; consumes F6 edit-preview; verifies preview state; detects repo drift; emits required_evidence/required_checks/blocked_reasons; approval_required=true; writes_supported=false; no apply; no patch; no target repo mutation. |
-| F7-C | Guarded write structured writes | PLANNED | Actual file writes behind recorded approval; not started. |
+| F7-B | Guarded write approval plan | DONE | Commit `944f3cec2c53a44c95200a27eb867bbda1098759`. Delivered `guarded_write_plan()` and `voyage guarded-write plan --preview --repo`; consumes F6 edit-preview; verifies preview state; detects repo drift; emits required_evidence/required_checks/blocked_reasons; approval_status `required`/`blocked_before_approval`; `next_gate: human_approval_required`; `writes_supported=false`; `approval_required=true`; valid JSON on blocked plans; exit 1 on `ok=false`. No writes, no patch, no apply, no staging, no target repo mutation. |
+| F7-C | Guarded write structured writes | PLANNED | Actual file writes behind recorded approval; not started. Requires planning before implementation. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
 ## F4-C closeout notes
@@ -83,6 +83,15 @@
 - Future architecture decision captured: D-012 Risk-Based Adaptive Control with Voyage-Observed Evidence.
 - Next decision: recommended F7-A guarded writes planning. F7 should consume `allowed_files`, `blocked_files`, `safety_findings`, `readiness`, `repo_state`, and `next_gate`. F7-only: actual file mutations, patch apply, staging, commit creation, human approval gate, rollback/checkpoint policy. Adapter loader/versioning, Narrative adapter extraction, LangGraph activation, Role Versioning, Role Freshness Auditor, and D-013 modernization remain future work, not started.
 - Real Narrative dogfood may be blocked because `repo_role=narrative` policy forbids `scenarios/SCENARIO_LIBRARY.json` and `scenarios/SCENARIO_MATRIX.json`; this is expected and demonstrates correct gate behavior.
+
+## F7-B closeout notes
+- F7-B closes the read-only approval/preflight layer for guarded writes. It consumes F6 `edit-preview` output and produces an approval plan with `approval_required=true`, `writes_supported=false`, and `next_gate: human_approval_required`. It does not write files, generate patches, apply changes, stage files, or commit to the target repo.
+- Delivered: `voyage_framework/core/guarded_write.py` (`guarded_write_plan()`), `voyage_framework/cli.py` (`voyage guarded-write plan --preview --repo`), `tests/unit/test_guarded_write.py`, `tests/integration/test_guarded_write_cli.py`.
+- RepoControlAdapter contract unchanged; `edit_preview.py`, `narrative_adapter.py`, `local_repo_adapter.py`, `report_validator.py`, `forbidden_paths.py`, and `_git_utils.py` unchanged.
+- Quality: full pytest 849 passed in 184.29s; F7 targeted tests 18 passed; F6 edit-preview regression 28 passed; boundary regression 8 passed; trust regression passed; pre-commit smoke passed; validate-report pre/post `ok:true`; report-state final dogfood `ok:true`.
+- Real Narrative dogfood: expected blocked-before-approval; `edit-preview` exit code 1; `guarded-write plan` exit code 1; `ok false`; `readiness blocked`; `approval_status blocked_before_approval`; `writes_supported false`; `approval_required true`; `blocked_reasons` include `blocked_files_present`, `error_safety_findings_present`, `source_preview_blocked`. Narrative repo not modified by Framework task.
+- External Narrative drift observed: during F7-B baseline branch was `feature/n5j-generated-rpy-freshness-validator @ 0e1f989b`; by F7-B-CLOSEOUT baseline branch reads `main @ 10eaed3`; worktree clean in both observations.
+- Next decision: F7-C planning for structured writes / approval artifact model. Before implementation, plan: structured write operation schema; human approval artifact model; checkpoint/rollback expectation; target repo drift handling; post-write validation; validate-report integration; no autonomous commit/push. F7-C must not start automatically.
 
 ## Known debts
 - ~~Pre-existing ruff E402 in `tests/unit/test_auto_loop.py` (F1).~~ Addressed in F1-B.
@@ -141,3 +150,4 @@
 | F6-A | yes | - | - | - | - |
 | F6-B | yes | yes (pre-commit) | ok:true | `70a1a26` | yes |
 | F6-CLOSEOUT | yes | yes (pre-commit) | ok:true | `1d42f0f` | yes |
+| F7-B | yes | yes (pre-commit + post-commit) | ok:true | `944f3ce` | yes |
