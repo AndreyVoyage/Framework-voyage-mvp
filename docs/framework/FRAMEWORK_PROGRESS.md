@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `35897efbd834754c5f90317a6098953793012341` (F6 edit-preview closed; D-012 captured).
+- Framework HEAD / origin/main: `1d42f0f5dbd49ba76e39bdcad47874b1b1a163d4` (F6 edit-preview closed; D-012 captured).
 - Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `feature/v0r4-renpy-specialist-role-improvements`; worktree clean (observed read-only during F6-CLOSEOUT verification; branch/HEAD drifted externally after F6-B baseline).
 - Direction: generic dev-control-OS (D-001).
 
@@ -59,7 +59,7 @@
 | F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented, mainline-accepted, and closed at `aae2803`. |
 | F6-A | Edit-safety / preview planning | DONE | Read-only planning completed with Verdict A. Recommended generic `voyage edit-preview --plan <json> --repo <repo> --repo-role <role>`. |
 | F6-B | Add read-only edit-preview command | DONE | Commit `70a1a266c6f607fa5dcf4ca1c89c03809e03a222`. Delivered `edit_preview()`, `voyage edit-preview --plan --repo --repo-role`, unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply; RepoControlAdapter contract unchanged. Full pytest 831 passed in 167.72s. Real Narrative dogfood produced expected safety block. |
-| F6 | Edit-safety & preview | DONE / CLOSED | F6-A, F6-B, and F6-CLOSEOUT closed. F6-CLOSEOUT pending commit. |
+| F6 | Edit-safety & preview | DONE / CLOSED | F6-A, F6-B, and F6-CLOSEOUT committed at `1d42f0f`. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
@@ -138,4 +138,4 @@
 | F4-C-CLOSEOUT | yes | yes (pre-commit) | ok:true | `4672803` | yes |
 | F6-A | yes | - | - | - | - |
 | F6-B | yes | yes (pre-commit) | ok:true | `70a1a26` | yes |
-| F6-CLOSEOUT | yes | pending | pending | pending | pending |
+| F6-CLOSEOUT | yes | yes (pre-commit) | ok:true | `1d42f0f` | yes |
