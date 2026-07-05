@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-05)
-- Framework HEAD / origin/main: `098b6700ca79667a9ad7f381836340f3395ec26a` (F7-B-CLOSEOUT baseline; F7-C1 approval verification pending commit).
+- Framework HEAD / origin/main: `c5da29ebdcc1b29da12b849f62623ad2c708ac93` (F7-C1 approval verification committed and pushed to origin/main).
 - Narrative HEAD: `6fa4791cf5e7c41e4064b8926d02a6ef1b69f1b5` on branch `main`; worktree clean (external drift observed during F7-C1 baseline).
 - Direction: generic dev-control-OS (D-001).
 
@@ -63,7 +63,7 @@
 | F7-A | Guarded write planning | DONE | Recommended Option A: approval/preflight layer first; no writes; actual structured writes deferred to F7-C. |
 | F7-B | Guarded write approval plan | DONE | Commit `944f3cec2c53a44c95200a27eb867bbda1098759`. Delivered `guarded_write_plan()` and `voyage guarded-write plan --preview --repo`; consumes F6 edit-preview; verifies preview state; detects repo drift; emits required_evidence/required_checks/blocked_reasons; approval_status `required`/`blocked_before_approval`; `next_gate: human_approval_required`; `writes_supported=false`; `approval_required=true`. No writes, no patch, no apply, no staging, no target repo mutation. |
 | F7-C | Structured writes planning | DONE | Recommended split: F7-C1 approval artifact verification (no writes); F7-D structured create/replace writes later. Approval artifact schema, binding checks, checkpoint/rollback plan, post-write validation plan defined. |
-| F7-C1 | Approval artifact verification | IN PROGRESS / pending commit | Generic `voyage guarded-write verify-approval --preview --approval --repo`; consumes edit-preview JSON and external approval JSON; verifies approval-to-preview binding; verifies approval-to-current-repo binding; verifies clean worktree; verifies rollback/checkpoint and post-write validation plans; emits `approval_valid`/`readiness`/`blocked_reasons`/`next_gate: F7_structured_write_required`; `writes_supported=false`; `approval_required=true`. No writes, no patch, no apply, no staging, no target repo mutation. |
+| F7-C1 | Approval artifact verification | DONE | Generic `voyage guarded-write verify-approval --preview --approval --repo`; consumes edit-preview JSON and external approval JSON; verifies approval-to-preview binding; verifies approval-to-current-repo binding; verifies clean worktree; verifies rollback/checkpoint and post-write validation plans; emits `approval_valid`/`readiness`/`blocked_reasons`/`next_gate: F7_structured_write_required`; `writes_supported=false`; `approval_required=true`. No writes, no patch, no apply, no staging, no target repo mutation. Committed and pushed at `c5da29e`. |
 | F7-D | Structured create/replace writes | PLANNED | Actual file writes behind verified approval artifact; not started. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
@@ -99,7 +99,7 @@
 - F7-C1 adds read-only approval artifact verification. It consumes F6 `edit-preview` output and an external human approval artifact JSON, verifies that the approval is valid and bound to the preview and current repository state, and emits `approval_valid`, `readiness`, `blocked_reasons`, and `next_gate: F7_structured_write_required`.
 - Delivered: `voyage_framework/core/guarded_write_approval.py` (`guarded_write_approval_verify()`), `voyage_framework/cli.py` (`voyage guarded-write verify-approval --preview --approval --repo`), `tests/unit/test_guarded_write_approval.py`, `tests/integration/test_guarded_write_approval_cli.py`.
 - No writes, no patch generation, no apply, no staging, no commit to target repo. `edit_preview.py`, `guarded_write.py`, adapters, `report_validator.py`, `forbidden_paths.py`, and `_git_utils.py` unchanged.
-- Quality: full pytest TBD; F7-C1 targeted tests 24 passed; F7-B regression 23 passed; F6 regression 28 passed; boundary regression 8 passed; trust regression 51 passed; pre-commit smoke passed; validate-report pre/post `ok:true`; report-state final dogfood `ok:true`.
+- Quality: full pytest 873 passed in 204.97s; F7-C1 targeted tests 24 passed; F7-B regression 23 passed; F6 regression 28 passed; boundary regression 8 passed; trust regression 51 passed; pre-commit smoke passed; validate-report pre/post `ok:true`; report-state final dogfood `ok:true`.
 - Real Narrative dogfood: expected blocked approval; edit-preview exit code 1; approval verification exit code 1; `ok false`; `readiness blocked`; `approval_valid false`; `writes_supported false`; `approval_required true`; `blocked_reasons` include `source_preview_blocked` and/or `blocked_files_present`. Narrative repo not modified by Framework task.
 - External Narrative drift observed: during F7-C1 baseline branch reads `main @ 6fa4791`; worktree clean.
 - Next decision: F7-C1 closeout, then F7-D planning for structured create/replace writes behind verified approval artifact.
@@ -163,3 +163,4 @@
 | F6-CLOSEOUT | yes | yes (pre-commit) | ok:true | `1d42f0f` | yes |
 | F7-B | yes | yes (pre-commit + post-commit) | ok:true | `944f3ce` | yes |
 | F7-B-CLOSEOUT | yes | yes (pre-commit + post-commit) | ok:true | `098b670` | yes |
+| F7-C1 | yes | yes (pre-commit + post-commit) | ok:true | `c5da29e` | yes |
