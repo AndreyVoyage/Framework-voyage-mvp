@@ -3,9 +3,9 @@
 > Living status of the Framework control-loop / trust-engine track. Target path in repo: `docs/framework/FRAMEWORK_PROGRESS.md`.
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
-## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `1d42f0f5dbd49ba76e39bdcad47874b1b1a163d4` (F6 edit-preview closed; D-012 captured).
-- Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `feature/v0r4-renpy-specialist-role-improvements`; worktree clean (observed read-only during F6-CLOSEOUT verification; branch/HEAD drifted externally after F6-B baseline).
+## Snapshot (2026-07-05)
+- Framework HEAD / origin/main: `74d9206076bd4104ff0951ed56c786b24a6b5647` (F6 closeout baseline; F7-B implementation pending commit).
+- Narrative HEAD: `0e1f989b9c65628920aecc2ee3ec0e797fae5917` on branch `feature/n5j-generated-rpy-freshness-validator`; worktree clean (external drift observed during F7-B baseline).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -60,7 +60,9 @@
 | F6-A | Edit-safety / preview planning | DONE | Read-only planning completed with Verdict A. Recommended generic `voyage edit-preview --plan <json> --repo <repo> --repo-role <role>`. |
 | F6-B | Add read-only edit-preview command | DONE | Commit `70a1a266c6f607fa5dcf4ca1c89c03809e03a222`. Delivered `edit_preview()`, `voyage edit-preview --plan --repo --repo-role`, unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply; RepoControlAdapter contract unchanged. Full pytest 831 passed in 167.72s. Real Narrative dogfood produced expected safety block. |
 | F6 | Edit-safety & preview | DONE / CLOSED | F6-A, F6-B, and F6-CLOSEOUT committed at `1d42f0f`. |
-| F7 | Guarded write | PLANNED | authorized text edits, gated. |
+| F7-A | Guarded write planning | DONE | Recommended Option A: approval/preflight layer first; no writes; actual structured writes deferred to F7-C. |
+| F7-B | Guarded write approval plan | IN PROGRESS / pending commit | Generic `voyage guarded-write plan --preview --repo`; consumes F6 edit-preview; verifies preview state; detects repo drift; emits required_evidence/required_checks/blocked_reasons; approval_required=true; writes_supported=false; no apply; no patch; no target repo mutation. |
+| F7-C | Guarded write structured writes | PLANNED | Actual file writes behind recorded approval; not started. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
 ## F4-C closeout notes

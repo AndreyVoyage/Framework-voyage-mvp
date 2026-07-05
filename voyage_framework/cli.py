@@ -1246,6 +1246,32 @@ def _edit_preview_command(args: argparse.Namespace) -> int:
     return 0 if result["ok"] else 1
 
 
+def _dispatch_guarded_write(args: argparse.Namespace) -> int:
+    """Dispatcher for guarded-write subcommands."""
+    command = getattr(args, "guarded_write_command", None)
+    if command == "plan":
+        return _guarded_write_plan_command(args)
+    print("❌ No guarded-write subcommand provided. Use: plan")
+    return 1
+
+
+def _guarded_write_plan_command(args: argparse.Namespace) -> int:
+    """Emit a read-only guarded-write approval plan from an edit-preview output.
+
+    This command is read-only. It does not write files, generate patches,
+    apply changes, stage files, or commit. Human approval is required before
+    any future write.
+    """
+    from voyage_framework.core.guarded_write import guarded_write_plan
+
+    result = guarded_write_plan(
+        preview_path=args.preview,
+        repo_path=args.repo,
+    )
+    print(json.dumps(result, indent=2))
+    return 0 if result["ok"] else 1
+
+
 def _dispatch_sync(
     args: argparse.Namespace,
     builder: ContextBuilder | None = None,
@@ -1710,6 +1736,38 @@ def main() -> int:
         ),
     )
 
+    # guarded-write (F7-B approval/preflight layer)
+    guarded_write_parser = subparsers.add_parser(
+        "guarded-write",
+        help="Guarded write approval/preflight commands (F7)",
+        description=(
+            "Guarded-write planning commands. These are read-only: they do not "
+            "write files, generate patches, apply changes, stage files, or commit. "
+            "Human approval is required before any future write."
+        ),
+    )
+    guarded_write_subparsers = guarded_write_parser.add_subparsers(dest="guarded_write_command")
+
+    guarded_write_plan_parser = guarded_write_subparsers.add_parser(
+        "plan",
+        help="Build a guarded-write approval plan from an edit-preview JSON file",
+        description=(
+            "Read-only approval plan. Consumes an edit-preview JSON output and "
+            "verifies that it is safe to proceed to human approval. No writes, no "
+            "patch generation, no apply, no staging, no commit."
+        ),
+    )
+    guarded_write_plan_parser.add_argument(
+        "--preview",
+        required=True,
+        help="Path to the edit-preview JSON output file",
+    )
+    guarded_write_plan_parser.add_argument(
+        "--repo",
+        required=True,
+        help="Path to the target repository root",
+    )
+
     # approve
     subparsers.add_parser("approve", help="Show pending approvals")
 
@@ -1873,6 +1931,7 @@ def main() -> int:
         "report-state": _report_state_command,
         "validate-report": _validate_report_command,
         "edit-preview": _edit_preview_command,
+        "guarded-write": _dispatch_guarded_write,
     }
 
     command_name: str = args.command
