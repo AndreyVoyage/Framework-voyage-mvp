@@ -117,3 +117,75 @@
   - Any activation of LangGraph requires a future F8+ design gate.
   - The Framework remains deterministic and human-gated in current phases.
   - This decision is consistent with keeping autonomy last.
+
+## D-012 - Risk-Based Adaptive Control with Voyage-Observed Evidence
+- Date: 2026-07-05, Status: Accepted / Future Architecture Principle; no implementation yet
+- Decision:
+  - Voyage should adapt control intensity per proposed change, but only using evidence it can observe or policy it can verify.
+  - Control level is not based on project size alone. It is based on:
+    - risk of the proposed change;
+    - criticality of the affected zone;
+    - confidence in the known blast-radius;
+    - repository state;
+    - quality of the safety net;
+    - hard-floor categories.
+- Rules:
+  - Risk classification is read-only and advisory.
+  - Agent claims may be recorded, but cannot lower risk.
+  - Tier evidence must be Voyage-observed, adapter-observed, CI-observed, or human-policy-backed.
+  - Automation may escalate control automatically.
+  - Automation may not de-escalate below policy or hard floors without explicit human approval from the relevant owner.
+  - Unknown or low-confidence scope increases risk.
+  - Unknown must also produce a path to reduce uncertainty through deterministic analysis, coverage maps, ownership maps, affected-file discovery, and rollback planning.
+  - Hard floors override soft scoring.
+  - Each gate must name the failure mode it prevents.
+  - Gates without a clear prevented failure mode are ceremony and should be removed or downgraded.
+  - Break-glass emergency paths, if introduced later, must be explicit, audited, time-limited, and followed by review/postmortem.
+  - CI/CD is an execution plane; Voyage is the control plane.
+- Hard-floor categories include:
+  - secrets;
+  - `.env`;
+  - deploy;
+  - production release;
+  - database migrations;
+  - mainline mutation;
+  - destructive operations;
+  - reset / clean / delete;
+  - authentication;
+  - payments;
+  - infrastructure;
+  - dependency major upgrades;
+  - compliance-sensitive zones;
+  - license-sensitive changes.
+- Future policy file candidate:
+  `.voyage/control_policy.yaml`
+- A future control policy may define:
+  - tiers;
+  - hard floors;
+  - forbidden paths;
+  - zone criticality;
+  - owners;
+  - required checks per tier;
+  - auto-escalation rules;
+  - de-escalation approval rules;
+  - break-glass rules;
+  - evidence requirements;
+  - allowed fast paths.
+- Rationale:
+  - Voyage exists because AI agents are not trusted reporters. If an agent can provide the evidence used to weaken its own gates, it can bypass the safety model. Adaptive control must reduce ceremony for genuinely low-risk changes, but only when the lower risk is supported by trusted evidence and does not cross hard floors.
+- Consequences:
+  - Low-risk work can eventually use lighter gates.
+  - High-risk work remains strongly gated.
+  - Unknown scope increases control until evidence reduces uncertainty.
+  - The future risk detector must be tested.
+  - F6 edit-preview provides the first substrate for this decision.
+  - F7 guarded writes must respect this decision.
+- Relationship to other decisions:
+  - D-009 Project Adapter Ownership:
+    project adapters may provide domain-specific risk signals, but Framework keeps the trust/control model.
+  - D-010 Role Versioning:
+    control policies should also be pinned/versioned.
+  - D-011 LangGraph Reserved:
+    future orchestration must remain behind D-012 gates.
+  - D-013 Application Modernization:
+    future modernization must balance risk-of-change and risk-of-inaction through this control model.

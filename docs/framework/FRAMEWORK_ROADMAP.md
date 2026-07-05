@@ -59,7 +59,20 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 - Reuse existing `langgraph_tools/` only after a future F8+ design gate.
 - No implementation started in this closeout.
 
-## 9. Change log
+## 9. Future horizon — risk-based adaptive control
+- Introduce project-pinned control policy after F6/F7 substrate is stable.
+- Candidate file:
+  `.voyage/control_policy.yaml`
+- Risk detector must be read-only/advisory.
+- Evidence must be Voyage-observed or policy-backed, not agent-claimed.
+- Automation may escalate controls automatically.
+- De-escalation requires human approval and must not cross hard floors.
+- Hard floors include secrets, deploy, migrations, destructive operations, mainline mutation, auth, payments, infra, compliance/license-sensitive zones.
+- F7 guarded writes must consume F6 edit-preview safety findings.
+- D-013 modernization remains future and should reuse D-012 rather than bypass it.
+- No implementation started in this closeout.
+
+## 10. Change log
 | Version | Date | Notes |
 |---|---|---|
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |

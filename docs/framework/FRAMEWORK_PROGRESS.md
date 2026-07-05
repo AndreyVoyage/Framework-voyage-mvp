@@ -4,8 +4,8 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `70a1a266c6f607fa5dcf4ca1c89c03809e03a222` (F6-B read-only edit-preview implemented; F6 closeout pending).
-- Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `main`; worktree clean (observed read-only during F6-B verification; branch/HEAD continued external drift).
+- Framework HEAD / origin/main: `35897efbd834754c5f90317a6098953793012341` (F6 edit-preview closed; D-012 captured).
+- Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `feature/v0r4-renpy-specialist-role-improvements`; worktree clean (observed read-only during F6-CLOSEOUT verification; branch/HEAD drifted externally after F6-B baseline).
 - Direction: generic dev-control-OS (D-001).
 
 ## Phase status
@@ -59,7 +59,7 @@
 | F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented, mainline-accepted, and closed at `aae2803`. |
 | F6-A | Edit-safety / preview planning | DONE | Read-only planning completed with Verdict A. Recommended generic `voyage edit-preview --plan <json> --repo <repo> --repo-role <role>`. |
 | F6-B | Add read-only edit-preview command | DONE | Commit `70a1a266c6f607fa5dcf4ca1c89c03809e03a222`. Delivered `edit_preview()`, `voyage edit-preview --plan --repo --repo-role`, unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply; RepoControlAdapter contract unchanged. Full pytest 831 passed in 167.72s. Real Narrative dogfood produced expected safety block. |
-| F6 | Edit-safety & preview | IN PROGRESS | F6-A DONE; F6-B implemented at `70a1a26`; F6-CLOSEOUT pending. |
+| F6 | Edit-safety & preview | DONE / CLOSED | F6-A, F6-B, and F6-CLOSEOUT closed. F6-CLOSEOUT pending commit. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
@@ -75,6 +75,11 @@
 - F6-B adds a generic read-only edit-preview / change-plan validator. It consumes proposal JSON (e.g. `narrative spec-plan` output) and validates it against repo state and the role-based forbidden-path policy. It emits `allowed_files`, `blocked_files`, `safety_findings`, `readiness`, and `next_gate: F7_guarded_write_required`.
 - Semantic correction: if a plan contains forbidden paths, path traversal, `apply_supported:true`, or non-proposal actions, `edit-preview` emits valid JSON with `ok:false`, `readiness:blocked`, and exits 1. This is a successful safety block, not a tool failure.
 - No writes, no patch generation, no apply, no RepoControlAdapter contract change, no adapter loader/versioning, no LangGraph activation, no Role Versioning code.
+- Quality: full pytest 831 passed in 167.72s; F6 targeted tests 23 passed; F4-C spec-plan regression 19 passed; Narrative regression 72 passed; local adapter regression 35 passed; boundary regression 8 passed; trust regression 51 passed; pre-commit smoke passed.
+- Real Narrative dogfood: expected safety block; exit 1; `ok false`; `readiness blocked`; `blocked_files` include `scenarios/SCENARIO_LIBRARY.json` and `scenarios/SCENARIO_MATRIX.json`; `allowed_files` count 29; `safety_findings` count 2. Narrative repo not modified by Framework task.
+- External Narrative drift observed: branch changed from `main` at F6-B baseline to `feature/v0r4-renpy-specialist-role-improvements` at F6-CLOSEOUT verification; HEAD remained `7eac828...`; worktree clean in both observations.
+- Future architecture decision captured: D-012 Risk-Based Adaptive Control with Voyage-Observed Evidence.
+- Next decision: recommended F7-A guarded writes planning. F7 should consume `allowed_files`, `blocked_files`, `safety_findings`, `readiness`, `repo_state`, and `next_gate`. F7-only: actual file mutations, patch apply, staging, commit creation, human approval gate, rollback/checkpoint policy. Adapter loader/versioning, Narrative adapter extraction, LangGraph activation, Role Versioning, Role Freshness Auditor, and D-013 modernization remain future work, not started.
 - Real Narrative dogfood may be blocked because `repo_role=narrative` policy forbids `scenarios/SCENARIO_LIBRARY.json` and `scenarios/SCENARIO_MATRIX.json`; this is expected and demonstrates correct gate behavior.
 
 ## Known debts
@@ -133,3 +138,4 @@
 | F4-C-CLOSEOUT | yes | yes (pre-commit) | ok:true | `4672803` | yes |
 | F6-A | yes | - | - | - | - |
 | F6-B | yes | yes (pre-commit) | ok:true | `70a1a26` | yes |
+| F6-CLOSEOUT | yes | pending | pending | pending | pending |
