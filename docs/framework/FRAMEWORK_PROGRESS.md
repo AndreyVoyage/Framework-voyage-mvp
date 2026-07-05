@@ -4,7 +4,7 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-04)
-- Framework HEAD / origin/main: `0c8fd9dc50c8164ecdf5da2e3ede99e9e3ef8bb6` (F4-C closed; F6 edit-preview implementation in progress).
+- Framework HEAD / origin/main: `70a1a266c6f607fa5dcf4ca1c89c03809e03a222` (F6-B read-only edit-preview implemented; F6 closeout pending).
 - Narrative HEAD: `7eac8280422cf1c02a9a8b27ca44452de26b2c27` on branch `main`; worktree clean (observed read-only during F6-B verification; branch/HEAD continued external drift).
 - Direction: generic dev-control-OS (D-001).
 
@@ -58,8 +58,8 @@
 | F5-A-CLOSEOUT | Second adapter proof acceptance | DONE | Closed F5-A; accepted local adapter proof; captured D-010 Role Versioning and Freshness Policy as future architecture principle. Process deviations recorded: implementation commits `90b050e` and `40da9e8` used `--no-verify` after manual pre-commit passed; final ledger commit `fd1eccc` ran hook normally; work first pushed to `origin/auto/nightly-20260627`, then main fast-forwarded after reconciliation. No forbidden files changed; no force/merge/rebase. Next decision: likely return to F4-C read-only spec-update proposal; F6 edit-safety/preview and F7 guarded writes remain future. Committed at `aae2803`. |
 | F5 | Second adapter (multi-repo) | DONE / CLOSED | Generic local Git adapter (`local`) implemented, mainline-accepted, and closed at `aae2803`. |
 | F6-A | Edit-safety / preview planning | DONE | Read-only planning completed with Verdict A. Recommended generic `voyage edit-preview --plan <json> --repo <repo> --repo-role <role>`. |
-| F6-B | Add read-only edit-preview command | IN PROGRESS | Implement `edit_preview()` in `voyage_framework/core/edit_preview.py`, wire `voyage edit-preview` CLI, add unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply. Quality gates pending. |
-| F6 | Edit-safety & preview | IN PROGRESS | F6-A DONE; F6-B implementation selected; pending commit. |
+| F6-B | Add read-only edit-preview command | DONE | Commit `70a1a266c6f607fa5dcf4ca1c89c03809e03a222`. Delivered `edit_preview()`, `voyage edit-preview --plan --repo --repo-role`, unit/integration tests. Validates affected_files/proposed_actions against repo state and forbidden policy; emits allowed_files/blocked_files/safety_findings/readiness/next_gate. No writes; no patch; no apply; RepoControlAdapter contract unchanged. Full pytest 831 passed in 167.72s. Real Narrative dogfood produced expected safety block. |
+| F6 | Edit-safety & preview | IN PROGRESS | F6-A DONE; F6-B implemented at `70a1a26`; F6-CLOSEOUT pending. |
 | F7 | Guarded write | PLANNED | authorized text edits, gated. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 
@@ -132,4 +132,4 @@
 | F4-C-B | yes | yes (pre-commit + post-commit) | ok:true | `cbe9f76` | yes |
 | F4-C-CLOSEOUT | yes | yes (pre-commit) | ok:true | `4672803` | yes |
 | F6-A | yes | - | - | - | - |
-| F6-B | yes | pending | pending | pending | pending |
+| F6-B | yes | yes (pre-commit) | ok:true | `70a1a26` | yes |
