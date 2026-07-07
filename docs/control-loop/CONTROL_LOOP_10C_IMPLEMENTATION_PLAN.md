@@ -1,3 +1,12 @@
+> **[NOT IMPLEMENTED — FUTURE SPEC ONLY — DO NOT EXECUTE]**
+> This document describes a planned phase of the Voyage Control Loop that has not been implemented.
+> Phase 1 (`control-loop-1.yaml` + `CONTROL_LOOP_SPEC.md`) is the only currently active control-loop surface.
+> See `docs/control-loop/CONTROL_LOOP_SPEC.md` §10 for Phase 1 deliverables.
+>
+> Status: NOT IMPLEMENTED | Target horizon: F8+ | Last reviewed: 2026-07-06
+
+---
+
 # VOYAGE CONTROL LOOP 10C - IMPLEMENTATION PLAN FOR MINIMAL CONTROLLED LAUNCHER
 
 > Implementation plan/spec for CONTROL-LOOP-10C.

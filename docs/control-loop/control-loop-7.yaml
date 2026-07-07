@@ -1,3 +1,8 @@
+implementation_status: "not_implemented"
+future_only: true
+execution_allowed: false
+# --- original content follows ---
+
 # VOYAGE-CONTROL-LOOP-7 - assisted handoff dry-run contract and spec
 #
 # Tracked copy: docs/control-loop/control-loop-7.yaml
