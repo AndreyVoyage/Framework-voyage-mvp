@@ -100,12 +100,24 @@ def test_core_exports_always_available() -> None:
 
 
 def test_optional_ast_exports_are_lazy_or_extra_gated() -> None:
-    import sys
-
     import voyage_framework
 
-    # Plain package import must not eagerly load the optional ast_tools submodule.
-    assert "voyage_framework.ast_tools" not in sys.modules
+    # Verify in a fresh interpreter that plain ``import voyage_framework`` does
+    # not eagerly import the optional ``ast_tools`` submodule.  Using a subprocess
+    # avoids contamination from other tests that legitimately use AST tools.
+    script = (
+        "import sys\n"
+        "import voyage_framework\n"
+        "print('ast_tools_loaded:', 'voyage_framework.ast_tools' in sys.modules)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "ast_tools_loaded: False" in result.stdout
 
     try:
         import tree_sitter  # noqa: F401
