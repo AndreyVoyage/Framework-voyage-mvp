@@ -7,6 +7,28 @@ on:
     branches: [main]
 
 jobs:
+  package-import-minimal:
+    name: Package import without optional ast extra
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev dependencies (no ast extra)
+        run: pip install -e ".[dev]"
+
+      - name: Verify root package import
+        run: python -c "import voyage_framework; print(voyage_framework.__version__)"
+
+      - name: Verify CLI help works without ast extra
+        run: python -m voyage_framework.cli --help
+
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}

@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 LEGACY_WORDING = ("legacy", "deprecated", "non-canonical", "compatibility")
 FORBIDDEN_IDENTITY = (
     "AI-native",
@@ -85,6 +87,46 @@ def test_cli_tasks_help_available() -> None:
 def test_cli_sync_help_available() -> None:
     output = _run_cli_help(["sync", "--help"])
     assert "sync" in output.lower()
+
+
+def test_core_exports_always_available() -> None:
+    import voyage_framework
+
+    assert voyage_framework.__version__ == "4.3.0"
+    assert hasattr(voyage_framework, "EventEngine")
+    assert hasattr(voyage_framework, "Event")
+    assert "ASTParser" in voyage_framework.__all__
+    assert "CodeIndexer" in voyage_framework.__all__
+
+
+def test_optional_ast_exports_are_lazy_or_extra_gated() -> None:
+    import sys
+
+    import voyage_framework
+
+    # Plain package import must not eagerly load the optional ast_tools submodule.
+    assert "voyage_framework.ast_tools" not in sys.modules
+
+    try:
+        import tree_sitter  # noqa: F401
+    except ImportError:
+        ast_extra_installed = False
+    else:
+        ast_extra_installed = True
+
+    if ast_extra_installed:
+        parser = voyage_framework.ASTParser
+        indexer = voyage_framework.CodeIndexer
+        assert parser is not None
+        assert indexer is not None
+        # Accessing the name should cache it in the module globals.
+        assert "ASTParser" in voyage_framework.__dict__
+        assert "CodeIndexer" in voyage_framework.__dict__
+    else:
+        with pytest.raises(AttributeError, match="optional 'ast' extra"):
+            _ = voyage_framework.ASTParser
+        with pytest.raises(AttributeError, match="optional 'ast' extra"):
+            _ = voyage_framework.CodeIndexer
 
 
 def test_cli_help_does_not_create_runtime_pollution(tmp_path: Path) -> None:

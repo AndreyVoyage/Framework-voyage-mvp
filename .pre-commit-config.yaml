@@ -22,6 +22,8 @@ repos:
         types: [python]
         pass_filenames: false
 
+      # Smoke only: package identity + validate-report.
+      # Full pytest is run in explicit task gates / CI, not in pre-commit.
       - id: pytest
         name: pytest
         entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/precommit/run_python.ps1 pytest -q tests/unit/test_report_validator.py tests/integration/test_report_validator_cli.py tests/unit/test_package_api_cli_identity.py
