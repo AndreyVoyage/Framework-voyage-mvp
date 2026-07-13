@@ -211,3 +211,19 @@
   - Per-element policies distinguish intentional pinning or LTS use from actionable staleness.
   - A two-axis view prevents both unsafe changes and unsafe inaction.
 - Detailed concept: [Modernization Concept](MODERNIZATION_CONCEPT.md).
+
+## D-014 — MCP Interface Boundary
+- Date: 2026-07-06 · Status: Accepted (interface boundary decision; implementation deferred — future MCP facade phase)
+- Key phrases (binding):
+  - MCP may observe, validate, explain and propose; it may never authorize or apply authoritative state changes.
+  - Read-only access is still policy-controlled, provenance-aware, and subject to redaction.
+- Decision (detail in [MCP Interface Boundary](MCP_INTERFACE_BOUNDARY.md)):
+  - Voyage is exposed as an MCP SERVER (a facade over the existing core beside the CLI); it is NOT the core, a workflow runtime, or a control plane. Voyage is NOT a general MCP client.
+  - Allowed via MCP: READ, VALIDATE, EXPLAIN, and (later, restricted) PROPOSE.
+  - Forbidden as autonomous MCP ops: AUTHORIZE, APPROVE, APPLY, deploy, commit, merge, delete, rollback, phase transition, authoritative status mutation.
+  - `propose_*` writes only to a non-authoritative `proposal_store` (rate-limited, deduplicated, TTL-bound); authoritative mutation requires a separate human-controlled channel bound to a specific human and proposal version.
+  - The MCP adapter has no import of apply, approval, phase-transition, or guarded-write services; this is enforced structurally through a separate package/process and an architecture-boundary test.
+  - There is no generic file/path read and no arbitrary command execution. READ/VALIDATE may use only existing read-only allowlisted Git verbs. Reads are scope-, redaction-, provenance-, and source-precedence-controlled.
+  - `evidence_complete` does not mean `authorized`; deterministic and advisory results are marked distinctly.
+  - CLI and the human-controlled apply path remain first-class. D-014 does not start MCP implementation.
+- Compliance: consistent with ADR-0001 (not an agent runtime), D-009 (interface/adapter layer), and D-012 (evidence-based gates remain human-gated). It does not weaken any trust boundary.

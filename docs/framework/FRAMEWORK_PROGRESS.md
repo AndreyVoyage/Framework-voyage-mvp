@@ -3,8 +3,9 @@
 > Living status of the Framework control-loop / trust-engine track. Target path in repo: `docs/framework/FRAMEWORK_PROGRESS.md`.
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
-## Snapshot (2026-07-05)
-- Framework HEAD / origin/main: `c5da29ebdcc1b29da12b849f62623ad2c708ac93` (F7-C1 approval verification committed and pushed to origin/main).
+## Snapshot (2026-07-14)
+- D-014-DOCS pre-change baseline: Framework HEAD / origin/main `99cef25a91f2455a2259195c023774af6ebb6bba`.
+- Current D-014-DOCS commit: this documentation commit; authoritative hash is in Git history and the closeout report.
 - Narrative HEAD: `6fa4791cf5e7c41e4064b8926d02a6ef1b69f1b5` on branch `main`; worktree clean (external drift observed during F7-C1 baseline).
 - Direction: generic dev-control-OS (D-001).
 
@@ -66,6 +67,8 @@
 | F7-C1 | Approval artifact verification | DONE | Generic `voyage guarded-write verify-approval --preview --approval --repo`; consumes edit-preview JSON and external approval JSON; verifies approval-to-preview binding; verifies approval-to-current-repo binding; verifies clean worktree; verifies rollback/checkpoint and post-write validation plans; emits `approval_valid`/`readiness`/`blocked_reasons`/`next_gate: F7_structured_write_required`; `writes_supported=false`; `approval_required=true`. No writes, no patch, no apply, no staging, no target repo mutation. Committed and pushed at `c5da29e`. |
 | F7-D | Structured create/replace writes | PLANNED | Actual file writes behind verified approval artifact; not started. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
+| D-013-DOCS | Application Modernization canonical documentation | DONE | Canonical decision, roadmap horizon, and `MODERNIZATION_CONCEPT.md` committed and pushed at `99cef25a91f2455a2259195c023774af6ebb6bba`; modernization implementation not started. |
+| D-014-DOCS | MCP Interface Boundary canonical documentation | DONE | D-014 decision, future roadmap horizon, and `MCP_INTERFACE_BOUNDARY.md` captured by this documentation commit; authoritative hash is in Git history and the closeout report. MCP implementation not started. |
 
 ## F4-C closeout notes
 - F4-C provides read-only proposal planning for Narrative specs. It does not write Narrative repo files, generate patches, or apply updates. It prepares the input surface for F6 edit-safety/preview.

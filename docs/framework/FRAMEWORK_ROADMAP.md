@@ -92,8 +92,57 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 - D-013 does not activate F7-D, R6-PREFLIGHT, or any modernization implementation task.
 - D-014/MCP remains a separate future decision and is not part of this horizon entry.
 
-## 12. Change log
+## 12. D-014 / MCP Interface Boundary — future interface horizon
+
+**Decision status:** D-014 canonical documentation is complete.
+**Implementation status:** NOT STARTED / DEFERRED.
+**Position:** additive MCP server facade beside the existing CLI; not core, not agent runtime, not autonomous control plane.
+
+### Required ordering
+
+1. **D-014-DOCS** — canonicalize the interface boundary and reconcile progress.
+2. **MCP-SEC-01** — create the threat model, abuse cases, source-scope policy, identity model, command allowlist and architectural boundary tests.
+3. **MASTER-PLAN-REFRESH** — produce a new approved Master Development Plan that places F7-D1, modernization work and MCP phases in a single gated order.
+4. **READ-ONLY PREFLIGHT** — verify the existing core service interfaces and implementation baseline before any MCP code.
+5. **MCP-READ-01** — expose a minimal deterministic read-only facade.
+6. **MCP-READ-02** — expose approved validation and explanation tools.
+7. **MCP-SEC-02** — harden provenance, redaction, caller identity, source precedence and response contracts.
+8. **MCP-PILOT-01** — integrate one approved MCP client and validate the boundary.
+9. **MCP-PROPOSE-01** — optionally add a non-authoritative, rate-limited proposal store after separate approval.
+10. **MCP-PROC-01** — move or harden the facade as a separate process if the initial implementation was in-process.
+
+### Horizon gates
+
+No MCP implementation may start until:
+
+- D-014 is canonical;
+- MCP-SEC-01 is accepted;
+- the new Master Development Plan is accepted;
+- the read-only implementation preflight passes;
+- the exact tool list and result contract are approved;
+- authoritative operations remain outside the MCP tool set;
+- architecture-boundary tests are defined;
+- secret, redaction and provenance policies are defined.
+
+### Explicit exclusions
+
+The horizon does not authorize:
+
+- generic file reading;
+- arbitrary command execution;
+- autonomous approve/apply;
+- deploy, commit, merge, rollback or phase transition tools;
+- replacement of existing Git/filesystem adapters;
+- LangGraph implementation;
+- control-loop implementation;
+- MCP proposal storage before MCP-PROPOSE-01;
+- any implementation merely because D-014 documentation is merged.
+
+Threat modelling and a new approved implementation plan are required before any MCP code.
+
+## 13. Change log
 | Version | Date | Notes |
 |---|---|---|
+| 0.3 | 2026-07-14 | Canonicalized D-014 MCP interface boundary as a future horizon; implementation not started. |
 | 0.2 | 2026-07-14 | Canonicalized D-013 Application Modernization as accepted future architecture; implementation not started. |
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |
