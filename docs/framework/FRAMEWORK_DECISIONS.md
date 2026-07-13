@@ -189,3 +189,25 @@
     future orchestration must remain behind D-012 gates.
   - D-013 Application Modernization:
     future modernization must balance risk-of-change and risk-of-inaction through this control model.
+
+## D-013 - Application Modernization and Brownfield Adoption
+- Date: 2026-07-04, Status: Accepted / Future Architecture Principle; implementation not started
+- Decision:
+  - Voyage may support continuous application modernization through a gated loop of sensing, mapping, proposing, previewing, approval, guarded application, and audit recording.
+  - Modernization is always propose-first and gated-apply-later. It is never automatic.
+  - Each managed element has an update policy: `track-latest`, `track-LTS`, `security-only`, `pinned-frozen`, or `manual-review-only`. Security findings may override routine freeze policy, but they still require the normal human gate.
+  - Greenfield projects should be designed for modernization readiness. Brownfield projects begin with read-only discovery and must establish an adequate safety net before any modernization change.
+  - Framework owns generic detection, risk and urgency scoring, gates, preview, trust validation, and reports. Project or plugin adapters own domain-specific modernization semantics, consistent with D-009.
+  - Modernization decisions balance risk-of-change under D-012 with risk-of-inaction such as vulnerabilities, end-of-life software, unsupported runtimes, abandoned dependencies, and license risk.
+  - Modernization must be incremental and reversible. Big-bang rewrites are forbidden; oversized proposals must be decomposed, and old/new coexistence must preserve a fallback during transition.
+- Boundaries:
+  - This decision documents future direction; it does not add detectors, a modernization manifest, a scheduler, model execution, or automatic writes.
+  - The candidate `.voyage/modernization.yaml` manifest is a future design surface, not a current canonical runtime artifact.
+  - Application requires the existing preview, approval, trust, and guarded-write boundaries. D-013 does not activate F7-D or any F8+ work.
+  - D-014/MCP is outside D-013 and requires a separate future decision.
+  - Voyage remains a governance and development-memory system, not an agent runtime.
+- Rationale:
+  - The same safety model used to build software can later help keep it supported and secure without creating perpetual upgrade churn or bypassing human control.
+  - Per-element policies distinguish intentional pinning or LTS use from actionable staleness.
+  - A two-axis view prevents both unsafe changes and unsafe inaction.
+- Detailed concept: [Modernization Concept](MODERNIZATION_CONCEPT.md).

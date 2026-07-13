@@ -80,7 +80,20 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 - **F7-C remains future:** structured writes behind explicit human approval, checkpoint/rollback, drift checks, and post-write validation.
 - **F8+ remains future:** orchestration, LangGraph optional adapter, role freshness auditor, adapter loader/versioning, D-013 modernization.
 
-## 11. Change log
+## 11. Future horizon — application modernization
+- D-013 is accepted and documented in [Framework Decisions](FRAMEWORK_DECISIONS.md#d-013---application-modernization-and-brownfield-adoption) and the [Modernization Concept](MODERNIZATION_CONCEPT.md).
+- Status: documented future direction; implementation not started.
+- Candidate capabilities include a semi-automatic modernization manifest, per-element update policies, and read-only freshness sensing from allowlisted sources with provenance.
+- Produce a prioritized backlog using both risk-of-change (D-012) and risk-of-inaction.
+- Bind safety-net and behavioral-equivalence validation to the applicable risk tier.
+- Require incremental, reversible migration with mandatory decomposition of oversized proposals; forbid big-bang rewrites.
+- Brownfield onboarding begins with read-only mapping and establishment of a safety net before changes.
+- Portfolio/fleet freshness visibility remains an F8+ horizon item.
+- D-013 does not activate F7-D, R6-PREFLIGHT, or any modernization implementation task.
+- D-014/MCP remains a separate future decision and is not part of this horizon entry.
+
+## 12. Change log
 | Version | Date | Notes |
 |---|---|---|
+| 0.2 | 2026-07-14 | Canonicalized D-013 Application Modernization as accepted future architecture; implementation not started. |
 | 0.1 | 2026-06-28 | Initial draft. Generic dev-control-OS direction; grounded in live inspection. |
