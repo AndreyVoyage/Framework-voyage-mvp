@@ -4,8 +4,9 @@
 > Updated by every significant step (per `FRAMEWORK_CONTROL_RULES.md` rule 14).
 
 ## Snapshot (2026-07-14)
-- D-014-DOCS pre-change baseline: Framework HEAD / origin/main `99cef25a91f2455a2259195c023774af6ebb6bba`.
-- Current D-014-DOCS commit: this documentation commit; authoritative hash is in Git history and the closeout report.
+- MCP-SEC-01 pre-change baseline: Framework HEAD / origin/main `4433e4760d9d4a93f5bfbbdcc74683ed956ce009`.
+- D-014-DOCS is DONE at `4433e4760d9d4a93f5bfbbdcc74683ed956ce009`.
+- Current MCP-SEC-01 step: this documentation commit; authoritative hash is in Git history and the closeout report.
 - Narrative HEAD: `6fa4791cf5e7c41e4064b8926d02a6ef1b69f1b5` on branch `main`; worktree clean (external drift observed during F7-C1 baseline).
 - Direction: generic dev-control-OS (D-001).
 
@@ -68,7 +69,8 @@
 | F7-D | Structured create/replace writes | PLANNED | Actual file writes behind verified approval artifact; not started. |
 | F8+ | Agent runtime / scheduler | FAR / GATED | via `AdapterProtocol`. |
 | D-013-DOCS | Application Modernization canonical documentation | DONE | Canonical decision, roadmap horizon, and `MODERNIZATION_CONCEPT.md` committed and pushed at `99cef25a91f2455a2259195c023774af6ebb6bba`; modernization implementation not started. |
-| D-014-DOCS | MCP Interface Boundary canonical documentation | DONE | D-014 decision, future roadmap horizon, and `MCP_INTERFACE_BOUNDARY.md` captured by this documentation commit; authoritative hash is in Git history and the closeout report. MCP implementation not started. |
+| D-014-DOCS | MCP Interface Boundary canonical documentation | DONE | D-014 decision, future roadmap horizon, and `MCP_INTERFACE_BOUNDARY.md` committed and pushed at `4433e4760d9d4a93f5bfbbdcc74683ed956ce009`. MCP implementation not started. |
+| MCP-SEC-01 | MCP threat model and security gate | DONE / DOCUMENTED | `MCP_THREAT_MODEL.md` captures the canonical threat model, requirements, candidate tool classification, Git/read policy, and future blocking test matrix. MCP implementation and test implementation have not started. Next documentation activity: `MASTER-PLAN-REFRESH`. Authoritative commit hash is in Git history and the closeout report. |
 
 ## F4-C closeout notes
 - F4-C provides read-only proposal planning for Narrative specs. It does not write Narrative repo files, generate patches, or apply updates. It prepares the input surface for F6 edit-safety/preview.
