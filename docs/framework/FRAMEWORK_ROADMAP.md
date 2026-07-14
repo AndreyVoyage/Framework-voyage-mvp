@@ -101,8 +101,8 @@ F0-B closeout -> F0-D docs+ADR -> F0-E negative assert -> F1 hygiene/perf -> F2 
 ### Required ordering
 
 1. **D-014-DOCS** — canonicalize the interface boundary and reconcile progress.
-2. **MCP-SEC-01 — DONE / canonical security design.** The accepted [MCP Threat Model and Security Gate](MCP_THREAT_MODEL.md) defines abuse cases, source scope, identity classes, Git policy, result contracts, redaction requirements, resource limits, and the blocking future test matrix. No security tests or MCP code were implemented by this documentation step.
-3. **MASTER-PLAN-REFRESH** — produce a new approved Master Development Plan that places F7-D1, modernization work and MCP phases in a single gated order.
+2. **MCP-SEC-01 — DONE / canonical security design** at `2b13b67c6bb5999f48f6be404ebd0d6c99ededed`. The accepted [MCP Threat Model and Security Gate](MCP_THREAT_MODEL.md) defines abuse cases, source scope, identity classes, Git policy, result contracts, redaction requirements, resource limits, and the blocking future test matrix. No security tests or MCP code were implemented by that documentation step.
+3. **MASTER-PLAN-REFRESH — current documentation step.** The [Master Development Plan](FRAMEWORK_MASTER_DEVELOPMENT_PLAN.md) integrates F7-D identifier resolution, D-013 dependencies, and MCP gates without authorizing implementation.
 4. **READ-ONLY PREFLIGHT** — verify the existing core service interfaces and implementation baseline before any MCP code.
 5. **MCP-READ-01** — expose a minimal deterministic read-only facade.
 6. **MCP-READ-02** — expose approved validation and explanation tools.
@@ -140,7 +140,7 @@ The horizon does not authorize:
 
 Threat modelling and a new approved implementation plan are required before any MCP code.
 
-**Current MCP gate:** implementation NOT STARTED. Next gate: **MASTER-PLAN-REFRESH**. The plan must preserve [D-014](MCP_INTERFACE_BOUNDARY.md), transfer all MCP-SEC-01 open items, and require a separate read-only preflight before MCP-READ-01. MCP-READ-01 remains future and is not an active implementation task.
+**Current MCP gate:** implementation NOT STARTED. Next gate after Master Plan acceptance: **BASELINE-READ-01**, the integrated read-only implementation preflight. It must preserve [D-014](MCP_INTERFACE_BOUNDARY.md), resolve the F7-D/F7-D1 planning identifier, map D-013 service dependencies, and verify MCP-READ prerequisites. MCP-READ-01 remains future and is not an active implementation task.
 
 ## 13. Change log
 | Version | Date | Notes |
