@@ -53,6 +53,9 @@ ast = [
     "tree-sitter-typescript>=0.21",
 ]
 improvement = []
+mcp = [
+    "mcp==1.28.1",
+]
 langgraph = [
     "langgraph>=0.2",
     "langchain>=0.3",
