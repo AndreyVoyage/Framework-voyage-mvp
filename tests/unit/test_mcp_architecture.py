@@ -8,6 +8,8 @@ from pathlib import Path
 
 _MCP_READ_DIR = Path(__file__).resolve().parents[2] / "voyage_framework" / "mcp_read"
 _SERVICES = {"task_read.py", "git_read.py", "report_read.py"}
+_SLICE3_FILES = {"tools.py", "server.py"}
+_ALLOWED_MCP_SDK_FILES = _SLICE3_FILES
 _GLOBAL_FORBIDDEN = (
     "voyage_framework.core.task_engine",
     "voyage_framework.core.task_models",
@@ -21,7 +23,6 @@ _GLOBAL_FORBIDDEN = (
     "http",
     "urllib",
     "requests",
-    "mcp",
 )
 _ALLOWED_CORE_IMPORT = "voyage_framework.core.forbidden_paths"
 
@@ -94,10 +95,48 @@ def test_service_separation() -> None:
             assert "voyage_framework.mcp_read.task_read" not in modules
 
 
-def test_approved_services_exist_without_server_surface() -> None:
+def test_slice3_files_exist() -> None:
+    """Slice 3: tools.py and server.py must be present."""
     names = {path.name for path in _MCP_READ_DIR.iterdir() if path.is_file()}
     assert names >= _SERVICES
-    assert not names & {"server.py", "tools.py", "registry.py", "service_registry.py"}
+    assert names >= _SLICE3_FILES
+
+
+def test_mcp_sdk_only_in_approved_files() -> None:
+    """MCP SDK imports allowed only in tools.py and server.py."""
+    for path in _python_files():
+        for module, _names in _imports(path):
+            if module.startswith("mcp"):
+                assert path.name in _ALLOWED_MCP_SDK_FILES, (
+                    f"{path.name}: MCP SDK import not allowed"
+                )
+
+
+def test_multiprocessing_only_in_tools() -> None:
+    """multiprocessing allowed only in tools.py (worker spawn)."""
+    for path in _python_files():
+        modules = {module for module, _names in _imports(path)}
+        if "multiprocessing" in modules:
+            assert path.name == "tools.py", f"{path.name}: multiprocessing not allowed"
+
+
+def test_only_four_tool_names_registered() -> None:
+    """Exactly four tool names in tools.py, no dynamic registration."""
+    import ast
+
+    tree = _tree(_MCP_READ_DIR / "tools.py")
+    names_in_code: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict):
+            for key_node, val_node in zip(node.keys, node.values, strict=False):
+                if (
+                    isinstance(key_node, ast.Constant)
+                    and key_node.value == "name"
+                    and isinstance(val_node, ast.Constant)
+                ):
+                    names_in_code.add(val_node.value)
+    expected = {"project_status", "validate_report", "get_task", "list_tasks"}
+    assert expected.issubset(names_in_code), f"Missing tools: {expected - names_in_code}"
 
 
 def test_no_shell_true_or_dynamic_process_command() -> None:
