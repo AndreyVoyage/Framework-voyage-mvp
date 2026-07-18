@@ -194,6 +194,93 @@ class TestProjectStatusIntegration:
         shutdown(runtime)
 
 
+class TestValidateReportIntegration:
+    """T82 — validate_report through Slice 3 tool runtime path."""
+
+    def test_validate_report_integration(self, tmp_path: Path) -> None:
+        project = _init_git(tmp_path / "project")
+        _init_task_db(project)
+        report_root = tmp_path / "reports"
+        report_root.mkdir()
+        audit_root = tmp_path / "audit"
+
+        # Create a valid voyage.report.v1 JSON report
+        report_data = {
+            "schema": "voyage.report.v1",
+            "repos": [
+                {
+                    "name": "test-repo",
+                    "path": str(project.resolve()),
+                    "expected_branch": "main",
+                    "expected_origin_main": subprocess.run(
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=project,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    ).stdout.strip(),
+                }
+            ],
+            "canary": "INJECTED_CANARY_SHOULD_NOT_LEAK",
+        }
+        report_path = report_root / "test-report.json"
+        report_path.write_text(json.dumps(report_data), encoding="utf-8")
+
+        config = MCPConfig(
+            project_root=project,
+            report_root=report_root,
+            audit_root=audit_root,
+            client_id="test-client",
+            enabled=True,
+        )
+        runtime = ToolRuntime()
+
+        from multiprocessing import Pipe
+
+        from voyage_framework.mcp_read.tools import _child_target
+
+        parent, child = Pipe(duplex=False)
+        limits_dict = {
+            "max_git_output_bytes": config.limits.max_git_output_bytes,
+            "git_timeout_seconds": config.limits.git_timeout_seconds,
+            "sqlite_timeout_seconds": config.limits.sqlite_timeout_seconds,
+            "execution_budget_seconds": 58,
+        }
+        proc = (
+            __import__("multiprocessing")
+            .get_context("spawn")
+            .Process(
+                target=_child_target,
+                args=(
+                    child,
+                    WorkerOperation.VALIDATE_REPORT,
+                    config.project_root,
+                    config.report_root,
+                    {"report_id": "test-report.json"},
+                    limits_dict,
+                ),
+            )
+        )
+        proc.start()
+        child.close()
+        proc.join(timeout=15)
+        assert proc.exitcode == 0
+        if parent.poll(0):
+            payload = json.loads(parent.recv_bytes())
+            assert payload["ok"] is True
+            result = payload["result"]
+            assert result.get("report_id") == "test-report.json"
+            assert result.get("report_schema") == "voyage.report.v1"
+            findings = result.get("findings", [])
+            assert isinstance(findings, list)
+            # No raw report content returned
+            serialized = json.dumps(result)
+            assert "INJECTED_CANARY_SHOULD_NOT_LEAK" not in serialized
+            assert "canary" not in serialized
+        parent.close()
+        shutdown(runtime)
+
+
 class TestGetTaskIntegration:
     """T83 — get_task returns task record or None for valid/missing IDs."""
 

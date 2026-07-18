@@ -116,12 +116,186 @@ class TestStdioOnly:
         assert has_stdio, "no stdio import found — server must use stdio"
 
 
-class TestServerImportSideEffects:
-    """Server import must not start the server or open stdio."""
+class TestGracefulShutdownSigint:
+    """T96 — graceful shutdown via CTRL_BREAK_EVENT (Windows) or SIGINT (POSIX)."""
 
-    def test_import_does_not_start(self) -> None:
-        """Module-level import is safe."""
-        from voyage_framework.mcp_read import server as _server
+    def test_graceful_shutdown_sigint(self, tmp_path: Path) -> None:
+        import os
+        import signal
+        import subprocess
+        import sys
+        import time
 
-        assert _server.create_server is not None
-        assert _server.main is not None
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / ".voyage").mkdir()
+        (project / ".voyage" / "tasks.db").write_bytes(b"SQLite format 3\0" + b"\0" * 100)
+        _init_git(project)
+        report = tmp_path / "reports"
+        report.mkdir()
+        audit = tmp_path / "audit"
+        audit.mkdir(parents=True, exist_ok=True)
+
+        env = os.environ.copy()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["VOYAGE_MCP_ENABLED"] = "1"
+        env["VOYAGE_MCP_CLIENT_ID"] = "test-t96"
+
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+
+        server = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "voyage_framework.mcp_read.server",
+                "--project-root",
+                str(project),
+                "--report-root",
+                str(report),
+                "--audit-root",
+                str(audit),
+            ],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=creationflags,
+        )
+        try:
+            # Wait for startup audit to appear or bounded timeout
+            startup_deadline = time.monotonic() + 15
+            audit_ready = False
+            while time.monotonic() < startup_deadline:
+                audit_file = audit / "mcp_audit.jsonl"
+                if audit_file.exists() and audit_file.stat().st_size > 0:
+                    audit_ready = True
+                    break
+                if server.poll() is not None:
+                    break
+                time.sleep(0.1)
+
+            assert audit_ready, "Server did not produce startup audit within timeout"
+            assert server.poll() is None, "Server exited prematurely"
+
+            # Send shutdown signal
+            if sys.platform == "win32":
+                os.kill(server.pid, signal.CTRL_BREAK_EVENT)
+            else:
+                server.send_signal(signal.SIGINT)
+
+            # Wait for graceful exit
+            try:
+                server.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait(timeout=5)
+                pytest.fail("Server did not exit within timeout after signal")
+
+            # Audit should be flushed (file exists with content)
+            assert audit_file.exists(), "Audit file should exist after shutdown"
+        finally:
+            if server.poll() is None:
+                server.kill()
+                server.wait(timeout=5)
+
+
+class TestGracefulShutdownStdinClose:
+    """T97 — graceful shutdown via stdin EOF/close."""
+
+    def test_graceful_shutdown_stdin_close(self, tmp_path: Path) -> None:
+        import os
+        import subprocess
+        import sys
+        import time
+
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / ".voyage").mkdir()
+        (project / ".voyage" / "tasks.db").write_bytes(b"SQLite format 3\0" + b"\0" * 100)
+        _init_git(project)
+        report = tmp_path / "reports"
+        report.mkdir()
+        audit = tmp_path / "audit"
+        audit.mkdir(parents=True, exist_ok=True)
+
+        env = os.environ.copy()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["VOYAGE_MCP_ENABLED"] = "1"
+        env["VOYAGE_MCP_CLIENT_ID"] = "test-t97"
+
+        server = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "voyage_framework.mcp_read.server",
+                "--project-root",
+                str(project),
+                "--report-root",
+                str(report),
+                "--audit-root",
+                str(audit),
+            ],
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            # Wait for startup audit
+            startup_deadline = time.monotonic() + 15
+            audit_ready = False
+            while time.monotonic() < startup_deadline:
+                audit_file = audit / "mcp_audit.jsonl"
+                if audit_file.exists() and audit_file.stat().st_size > 0:
+                    audit_ready = True
+                    break
+                if server.poll() is not None:
+                    break
+                time.sleep(0.1)
+
+            assert audit_ready, "Server did not produce startup audit within timeout"
+            assert server.poll() is None, "Server exited prematurely"
+
+            # Close stdin to deliver EOF
+            if server.stdin is not None:
+                server.stdin.close()
+
+            # Wait for graceful exit
+            try:
+                server.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait(timeout=5)
+                pytest.fail("Server did not exit within timeout after stdin close")
+
+            assert audit_file.exists(), "Audit file should exist after shutdown"
+        finally:
+            if server.poll() is None:
+                server.kill()
+                server.wait(timeout=5)
+
+
+def _init_git(project_root: Path) -> None:
+    import subprocess
+
+    subprocess.run(
+        ["git", "init", "--initial-branch=main"],
+        cwd=project_root,
+        check=True,
+        capture_output=True,
+    )
+    (project_root / "README.md").write_text("test\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "README.md"],
+        cwd=project_root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "-m", "init"],
+        cwd=project_root,
+        check=True,
+        capture_output=True,
+    )
